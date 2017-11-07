@@ -136,6 +136,12 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     public String buildIDToken(OAuthTokenReqMessageContext request, OAuth2AccessTokenRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
 
+        log.info("********Access token in tokenRespDTO: " + tokenRespDTO.getAccessToken());
+        log.info("********Authorized scopes in tokenRespDTO: " + tokenRespDTO.getAuthorizedScopes());
+        log.info("********Token Id: " + tokenRespDTO.getTokenId());
+        log.info("********Token Type: " + tokenRespDTO.getTokenType());
+        log.info("********Callback URI: " + tokenRespDTO.getCallbackURI());
+
         String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
         IdentityProvider identityProvider = getResidentIdp(tenantDomain);
 
@@ -521,6 +527,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private long getAccessTokenIssuedTime(String accessToken, OAuthTokenReqMessageContext request)
             throws IdentityOAuth2Exception {
 
+        log.info("********access token: " + accessToken);
         AccessTokenDO accessTokenDO = null;
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
 
@@ -567,11 +574,17 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             authorizedUser = authorizedUser.toLowerCase();
         }
 
+        log.info("********Client consumer key: " + request.getAuthorizationReqDTO().getConsumerKey());
+        log.info("********Authorized user: " + authorizedUser);
+        log.info("********Approved scope: " + request.getApprovedScope());
         OAuthCacheKey cacheKey = new OAuthCacheKey(
                 request.getAuthorizationReqDTO().getConsumerKey() + ":" + authorizedUser +
                         ":" + OAuth2Util.buildScopeString(request.getApprovedScope()));
         CacheEntry result = oauthCache.getValueFromCache(cacheKey);
 
+        if(result == null){
+            log.info("********Access token info not available in the cache for cache key: " + cacheKey);
+        }
         // cache hit, do the type check.
         if (result instanceof AccessTokenDO) {
             accessTokenDO = (AccessTokenDO) result;
@@ -579,6 +592,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         // Cache miss, load the access token info from the database.
         if (accessTokenDO == null) {
+            log.info("********unable to retrieve access token info from cache.");
             accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
         }
 

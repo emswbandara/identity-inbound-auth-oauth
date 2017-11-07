@@ -960,6 +960,8 @@ public class TokenMgtDAO {
 
             prepStmt = connection.prepareStatement(sql);
 
+            log.info("********access token: " + accessTokenIdentifier);
+            log.info("********processed access token identifier: "+ persistenceProcessor.getProcessedAccessTokenIdentifier(accessTokenIdentifier));
             prepStmt.setString(1, persistenceProcessor.getProcessedAccessTokenIdentifier(accessTokenIdentifier));
             resultSet = prepStmt.executeQuery();
 
@@ -992,6 +994,7 @@ public class TokenMgtDAO {
                     user.setTenantDomain(tenantDomain);
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
 
+                    log.info("********access token found in db.");
                     dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime, refreshTokenIssuedTime,
                             validityPeriodInMillis, refreshTokenValidityPeriodMillis, tokenType);
                     dataDO.setAccessToken(accessTokenIdentifier);
@@ -1005,6 +1008,10 @@ public class TokenMgtDAO {
                 }
 
                 iterateId++;
+            }
+
+            if(dataDO == null){
+                log.info("********access token is null.");
             }
 
             if (scopes.size() > 0 && dataDO != null) {
