@@ -65,6 +65,7 @@ public class OAuth2ServiceComponentHolder {
         OAuth2ServiceComponentHolder.applicationMgtService = applicationMgtService;
     }
 
+    @Deprecated
     public static boolean isPkceEnabled() {
 
         return pkceEnabled;
@@ -83,6 +84,11 @@ public class OAuth2ServiceComponentHolder {
     public static void setAudienceEnabled(boolean audienceEnabled) {
 
         OAuth2ServiceComponentHolder.audienceEnabled = audienceEnabled;
+    }
+
+    public static boolean isIDPNameColumnEnabled() {
+
+        return true;
     }
 
     public static RegistryService getRegistryService() {

@@ -1212,10 +1212,7 @@ public class OAuth2Util {
 
     public static boolean validatePKCE(String referenceCodeChallenge, String verificationCode, String challenge_method,
                                        OAuthAppDO oAuthApp) throws IdentityOAuth2Exception {
-        //ByPass PKCE validation if PKCE Support is disabled
-        if (!isPKCESupportEnabled()) {
-            return true;
-        }
+
         if (oAuthApp != null && oAuthApp.isPkceMandatory() || referenceCodeChallenge != null) {
 
             //As per RFC 7636 Fallback to 'plain' if no code_challenge_method parameter is sent
@@ -1280,6 +1277,7 @@ public class OAuth2Util {
         return true;
     }
 
+    @Deprecated
     public static boolean isPKCESupportEnabled() {
 
         return OAuth2ServiceComponentHolder.isPkceEnabled();
@@ -2385,9 +2383,6 @@ public class OAuth2Util {
         if (accessTokenDO != null) {
             authenticatedUser = accessTokenDO.getAuthzUser();
         }
-        if (authenticatedUser != null) {
-            authenticatedUser.setFederatedUser(isFederatedUser(authenticatedUser));
-        }
         return authenticatedUser;
     }
 
@@ -2690,19 +2685,20 @@ public class OAuth2Util {
      * @param tenantDomain    tenent domain
      * @return an instance of AuthenticatedUser{@link AuthenticatedUser}
      */
-    public static AuthenticatedUser createAuthenticatedUser(String username, String userStoreDomain, String tenantDomain) {
+    public static AuthenticatedUser createAuthenticatedUser(String username, String userStoreDomain, String
+            tenantDomain, String idpName) {
 
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
         authenticatedUser.setUserName(username);
         authenticatedUser.setTenantDomain(tenantDomain);
-        if (StringUtils.startsWith(userStoreDomain, OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX) &&
-                !OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal()) {
+        if (!StringUtils.equals("LOCAL", idpName) && !OAuthServerConfiguration.getInstance()
+                .isMapFederatedUsersToLocal()) {
             if (log.isDebugEnabled()) {
                 log.debug("Federated prefix found in domain: " + userStoreDomain + " for user: " + username + " in " +
                         "tenant domain:" + tenantDomain + ". Flag user as a federated user.");
             }
             authenticatedUser.setFederatedUser(true);
-            authenticatedUser.setFederatedIdPName(OAuth2Util.getFederatedIdPFromDomain(userStoreDomain));
+            authenticatedUser.setFederatedIdPName(idpName);
         } else {
             authenticatedUser.setUserStoreDomain(userStoreDomain);
         }
