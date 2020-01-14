@@ -3,7 +3,7 @@
     <import resource="classpath:META-INF/cxf/cxf.xml"/>
     <context:property-placeholder/>
     <context:annotation-config/>
-    <bean class="org.springframework.web.context.support.ServletContextPropertyPlaceholderConfigurer"/>
+    <bean class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer"/>
     <bean class="org.springframework.beans.factory.config.PreferencesPlaceholderConfigurer"/>
     <jaxrs:server id="services" address="/">
         <jaxrs:serviceBeans>
@@ -12,6 +12,12 @@
         </jaxrs:serviceBeans>
         <jaxrs:providers>
             <bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider"/>
+            <bean class="com.fasterxml.jackson.jaxrs.base.JsonMappingExceptionMapper"/>
+            <bean class="com.fasterxml.jackson.jaxrs.base.JsonParseExceptionMapper"/>
         </jaxrs:providers>
     </jaxrs:server>
+    <bean id="DCRMUtilBean" class="org.wso2.carbon.identity.oauth2.dcr.endpoint.util.DCRMUtils">
+        <property name="oAuth2DCRMService" ref="oAuth2DCRMServiceFactoryBean"/>
+    </bean>
+    <bean id="oAuth2DCRMServiceFactoryBean" class="org.wso2.carbon.identity.oauth2.dcr.endpoint.factory.OAuth2DCRMServiceFactory"/>
 </beans>

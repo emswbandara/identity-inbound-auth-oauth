@@ -21,10 +21,15 @@ package org.wso2.carbon.identity.oauth.cache;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.oauth2.model.OAuth2Parameters;
 
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * Session data cache entry.
+ */
 public class SessionDataCacheEntry extends CacheEntry {
 
     private static final long serialVersionUID = -4123547630178387354L;
@@ -32,11 +37,13 @@ public class SessionDataCacheEntry extends CacheEntry {
     private OAuth2Parameters oAuth2Parameters;
     private long authTime;
     private String authenticatedIdPs;
-    private String essentialClaims ;
+    private String essentialClaims;
 
     private String queryString = null;
 
     private ConcurrentMap<String, String[]> paramMap = new ConcurrentHashMap<String, String[]>();
+
+    private Map<String, Serializable> endpointParams = new HashMap<>();
 
     public OAuth2Parameters getoAuth2Parameters() {
         return oAuth2Parameters;
@@ -94,4 +101,8 @@ public class SessionDataCacheEntry extends CacheEntry {
         this.essentialClaims = essentialClaims;
     }
 
+    public Map<String, Serializable> getEndpointParams() {
+
+        return endpointParams;
+    }
 }

@@ -1,9 +1,9 @@
 swagger: '2.0'
 info:
-  version: 1.0.0
+  version: 1.1.0
   title: WSO2 Identity Server OAuth2 Dynamic Client Registration Endpoint
   description: >
-    This document specifies a **OAuth2 Dyanmic Client Registration Endpoint**
+    This document specifies an **OAuth2 Dyanmic Client Registration Endpoint**
     for WSO2 **Identity Server** .
 
 
@@ -18,7 +18,7 @@ info:
 schemes:
   - https
 host: localhost
-basePath: /api/identity/oauth2/dcr/v1.0
+basePath: /api/identity/oauth2/dcr/v1.1
 consumes:
   - application/json
 produces:
@@ -27,29 +27,46 @@ paths:
   /register:
     post:
       description: |
-        This API is used to create a OAuth2 application.
+        This API is used to create an OAuth2 application. If your want to create your application to use the implicit or authorization_code 
+        grant types, you need to provide the redirect_uris field in your request. If you are using any other grant type, 
+        such as password, you don't need to send the redirect_uri field in the request. Check the sample request given below.
       x-wso2-request: |
         curl -X POST -H "Authorization: Basic YWRtaW46YWRtaW4=" -H
         "Content-Type: application/json" -d '{
-          "redirect_uris":["https://client.example.org/callback"],
+          "redirect_uris":[""],
           "client_name": "application_1",
-          "ext_param_owner": "application_owner",
           "grant_types": ["password"] }'
-        "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register"
+        "https://localhost:9443/api/identity/oauth2/dcr/v1.1/register"
       x-wso2-response: |
         "HTTP/1.1 201 Created"
         { "client_id": "s6BhdRkqt3",
         "client_secret":"ZJYCqe3GGRvdrudKyZS0XhGv_Z45DuKhCUk0gBR1vZk",
         "client_secret_expires_at": 1577858400,
-        "redirect_uris":["https://client.example.org/callback"],
-        "client_name":"application_owner_application_1" }
+        "redirect_uris":[""],
+        "client_name":"application_1" }
+      description: |
+        If you want to register an OAuth2 application with a specified client_id and secret, check the sample request given below.
+      x-wso2-request: |
+        curl -k -X POST -H "Authorization: Basic YWRtaW46YWRtaW4=" -H 
+        "Content-Type: application/json" -d '{
+         "client_name": "application_test",
+         "grant_types": ["password"], 
+         "ext_param_client_id":"provided_client_id0001", 
+         "ext_param_client_secret":"provided_client_secret0001" }' 
+        "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register"
+      x-wso2-response: |
+        "HTTP/1.1 201 Created"
+        {"client_name”:"application_test",
+        "client_id":"provided_client_id0001",
+        "client_secret":"provided_client_secret0001",
+        "redirect_uris":[""]}
       summary: |
-        Registers a oauth2 application
+        Registers an OAuth2 application
       operationId: registerApplication
       parameters:
         - name: registrationRequest
           in: body
-          description: Application information to register
+          description: Application information to register.
           required: true
           schema:
             $ref: '#/definitions/registrationRequest'
@@ -72,15 +89,52 @@ paths:
             $ref: '#/definitions/error'
       tags:
         - OAuth2 DCR
+  # Get application info by client name
+    get:
+      summary: |
+        Get OAuth2 application information
+      description: |
+         This API is used to get/retrieve an OAuth2 application by client_name.
+      x-wso2-request: |
+        curl -X GET -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.1/register?client_name=application_owner_application_1"
+      x-wso2-response: |
+        "HTTP/1.1 200 OK"
+        { "client_id": "s6BhdRkqt3",
+        "client_secret":"ZJYCqe3GGRvdrudKyZS0XhGv_Z45DuKhCUk0gBR1vZk",
+        "client_secret_expires_at": 1577858400,
+        "redirect_uris":["https://client.example.org/callback"],
+        "client_name":"application_owner_application_1" }
+      operationId: getApplicationByName
+      parameters:
+        - name: client_name
+          type: string
+          in: path
+          description: Unique identifier of the OAuth2 client application.
+          required: true
+      responses:
+        '200':
+          description: Successfully Retrieved
+          schema:
+            $ref: '#/definitions/application'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/error'
+        '500':
+          description: Server Error
+          schema:
+            $ref: '#/definitions/error'
+      tags:
+        - OAuth2 DCR
 # Endpoint to get application information
   /register/{client_id}:
     get:
       summary: |
         Get OAuth2 application information
       description: |
-         This API is used to get OAuth2 application by client_id.
+         This API is used to get/retrieve an OAuth2 application by client_id.
       x-wso2-request: |
-        curl -X GET -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register/s6BhdRkqt3"
+        curl -X GET -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.1/register/s6BhdRkqt3"
       x-wso2-response: |
         "HTTP/1.1 200 OK"
         { "client_id": "s6BhdRkqt3",
@@ -93,10 +147,11 @@ paths:
         - name: client_id
           type: string
           in: path
+          description: Unique identifier of the OAuth2 client application.
           required: true
       responses:
         '200':
-          description: Successful Retrieved
+          description: Successfully Retrieved
           schema:
             $ref: '#/definitions/application'
         '404':
@@ -114,9 +169,9 @@ paths:
       summary: |
         Delete OAuth2 application
       description: |
-         This API is used to delete OAuth2 application by client_id.
+         This API is used to delete an OAuth2 application by client_id.
       x-wso2-request: |
-        curl -X DELETE -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register/s6BhdRkqt3"
+        curl -X DELETE -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.1/register/s6BhdRkqt3"
       x-wso2-response: |
         "HTTP/1.1 204 No Content"
       operationId: deleteApplication
@@ -124,10 +179,11 @@ paths:
         - name: client_id
           type: string
           in: path
+          description: Unique identifier of the OAuth2 client application.
           required: true
       responses:
         '204':
-          description: Successful deleted
+          description: Successfully deleted
         '404':
           description: Not Found
           schema:
@@ -141,7 +197,7 @@ paths:
 # Endpoint uses to update OAuth2 application
     put:
       description: |
-        This API is used to create a OAuth2 application.
+        This API is used to update an OAuth2 application.
       x-wso2-request: |
         curl -X PUT -H "Authorization: Basic YWRtaW46YWRtaW4=" -H
         "Content-Type: application/json" -d '{
@@ -149,7 +205,7 @@ paths:
           "client_name": "application_1",
           "ext_param_owner": "application_owner",
           "grant_types": ["password"] }'
-        "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register"
+        "https://localhost:9443/api/identity/oauth2/dcr/v1.1/register"
       x-wso2-response: |
         "HTTP/1.1 200 OK"
         { "client_id": "s6BhdRkqt3",
@@ -158,22 +214,23 @@ paths:
         "redirect_uris":["https://client.example.org/callback"],
         "client_name":"application_owner_application_1" }
       summary: |
-        Registers a oauth2 application
+        Updates an OAuth2 application
       operationId: updateApplication
       parameters:
         - name: updateRequest
           in: body
-          description: Application information to update
+          description: Application information to update.
           required: true
           schema:
             $ref: '#/definitions/updateRequest'
         - name: client_id
           type: string
           in: path
+          description: Unique identifier for the OAuth2 client application.
           required: true
       responses:
         '200':
-          description: Successful updated
+          description: Successfully updated
           schema:
             $ref: '#/definitions/application'
         '400':
@@ -207,11 +264,46 @@ definitions:
           type: string
       client_name:
         type: string
+      client_id:
+        type: string
+      client_secret:
+        type: string
       grant_types:
         type: array
         items:
           type: string
-
+      application_type:
+        type: string
+      jwks_uri:
+        type: string
+      url:
+        type: string
+      ext_param_client_id:
+        type: string
+      ext_param_client_secret:
+        type: string
+      contacts:
+        type: array
+        items:
+          type: string
+      post_logout_redirect_uris:
+        type: array
+        items:
+          type: string
+      request_uris:
+        type: array
+        items:
+          type: string
+      response_types:
+        type: array
+        items:
+          type: string
+      ext_param_sp_template:
+        type: string
+      backchannel_logout_uri:
+        type: string
+      backchannel_logout_session_required:
+        type: boolean
 #-----------------------------------------------------
 # The Application Update Request Object
 #-----------------------------------------------------
@@ -224,10 +316,18 @@ definitions:
           type: string
       client_name:
         type: string
+      client_id:
+        type: string
+      client_secret:
+        type: string
       grant_types:
         type: array
         items:
           type: string
+      backchannel_logout_uri:
+        type: string
+      backchannel_logout_session_required:
+        type: boolean
 #-----------------------------------------------------
 # The OAuth2 Application Object
 #-----------------------------------------------------
@@ -252,9 +352,7 @@ definitions:
   error:
     type: object
     properties:
-      code:
+      error:
         type: string
-      message:
-        type: string
-      description:
+      error_description:
         type: string

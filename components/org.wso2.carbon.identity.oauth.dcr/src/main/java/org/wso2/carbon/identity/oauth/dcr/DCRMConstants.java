@@ -18,43 +18,62 @@
 
 package org.wso2.carbon.identity.oauth.dcr;
 
+/**
+ * This class holds the constants used by DCRM component.
+ */
 public class DCRMConstants {
 
+    /**
+     * Enum for OAuth DCR service related error messages.
+     */
     public enum ErrorMessages {
 
-        CONFLICT_EXISTING_APPLICATION("80001", "Application with the name %s already exist in the system"),
-        FAILED_TO_REGISTER_SP("80002","Error occurred while creating service provider %s" ),
-        FAILED_TO_GET_SP("80003","Error occurred while retrieving service provider %s" ),
-        FAILED_TO_UPDATE_SP("80004","Error occurred while updating service provider %s" ),
-        FAILED_TO_DELETE_SP("80005","Error occurred while deleting service provider %s" ),
-        FAILED_TO_REGISTER_APPLICATION("80006","Error occurred while creating application with application name:  %s" ),
-        FAILED_TO_GET_APPLICATION("80007","Error occurred while retrieving application with application name: %s" ),
-        FAILED_TO_GET_APPLICATION_BY_ID("80008","Error occurred while retrieving application with client key: %s" ),
-        FAILED_TO_UPDATE_APPLICATION("80009","Error occurred while updating application with client key: %s" ),
-        BAD_REQUEST_INVALID_REDIRECT_URI("80010", "Invalid redirect URI: %s"),
-        BAD_REQUEST_INVALID_INPUT("80011", "%s"),
-        NOT_FOUND_APPLICATION_WITH_ID("80012", "Application not available for given client key: %s"),
-        ERROR_CODE_UNEXPECTED("80000", "Unexpected error");
+        CONFLICT_EXISTING_APPLICATION("Application with the name %s already exist in the system"),
+        FAILED_TO_REGISTER_SP("Error occurred while creating service provider %s"),
+        FAILED_TO_GET_SP("Error occurred while retrieving service provider %s"),
+        FAILED_TO_UPDATE_SP("Error occurred while updating service provider %s"),
+        FAILED_TO_DELETE_SP("Error occurred while deleting service provider %s"),
+        FAILED_TO_REGISTER_APPLICATION("Error occurred while creating application with application name:  %s"),
+        FAILED_TO_GET_APPLICATION("Error occurred while retrieving application with application name: %s"),
+        FAILED_TO_GET_APPLICATION_BY_ID("Error occurred while retrieving application with client key: %s"),
+        FAILED_TO_UPDATE_APPLICATION("Error occurred while updating application with client key: %s"),
+        BAD_REQUEST_INVALID_REDIRECT_URI("Invalid redirect URI: %s"),
+        BAD_REQUEST_INVALID_BACKCHANNEL_LOGOUT_URI("Invalid back-channel logout URI: %s"),
+        BAD_REQUEST_INVALID_SP_NAME("Client Name is not adhering to the regex: %s"),
+        BAD_REQUEST_INVALID_SP_TEMPLATE_NAME("Invalid service provider template name: %s"),
+        BAD_REQUEST_INVALID_INPUT("%s"),
+        BAD_REQUEST_INSUFFICIENT_DATA("Insufficient data in the request"),
+        NOT_FOUND_APPLICATION_WITH_ID("Application not available for given client key: %s"),
+        NOT_FOUND_APPLICATION_WITH_NAME("Application not available for given client name: %s"),
+        CONFLICT_EXISTING_CLIENT_ID("Client id %s already exist in the system"),
+        BAD_REQUEST_CLIENT_ID_VIOLATES_PATTERN("Provided client id is not adhering to the provided regex %s"),
+        FORBIDDEN_UNAUTHORIZED_USER("User does not have access to the application %s"),
+        ERROR_CODE_UNEXPECTED("Unexpected error");
 
-        private final String code;
         private final String message;
 
-        ErrorMessages(String code, String message) {
-            this.code = code;
+        ErrorMessages(String message) {
+
             this.message = message;
         }
 
-        public String getCode() {
-            return code;
-        }
-
         public String getMessage() {
+
             return message;
         }
 
-        @Override
-        public String toString() {
-            return code + " - " + message;
-        }
     }
+
+    /**
+     * OAuth DCR service related error codes.
+     */
+    public static class ErrorCodes {
+
+        public static final String INVALID_REDIRECT_URI = "invalid_redirect_uri";
+        public static final String INVALID_CLIENT_METADATA = "invalid_client_metadata";
+        public static final String INVALID_SOFTWARE_STATEMENT = "invalid_software_statement";
+        public static final String UNAPPROVED_SOFTWARE_STATEMENT = "unapproved_software_statement";
+    }
+
+    public static final String OAUTH2 = "oauth2";
 }

@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.oauth2.dao;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 
 /**
- *
+ * Access token context data object.
  */
 public class AccessContextTokenDO {
 

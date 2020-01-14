@@ -24,17 +24,14 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.BlockingDeque;
 
 /**
- *
+ * Authorization code persistence task.
  */
 public class AuthPersistenceTask implements Runnable {
 
-    private static Log log = LogFactory.getLog(AuthPersistenceTask.class);
+    private static final Log log = LogFactory.getLog(AuthPersistenceTask.class);
     private BlockingDeque<AuthContextTokenDO> authContextTokenQueue;
 
     public AuthPersistenceTask(BlockingDeque<AuthContextTokenDO> authContextTokenQueue) {
@@ -56,9 +53,9 @@ public class AuthPersistenceTask implements Runnable {
                         if (log.isDebugEnabled()) {
                             log.debug("Auth Token Data removing Task is started to run");
                         }
-                        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-                        tokenMgtDAO.doChangeAuthzCodeState(authContextTokenDO.getAuthzCode(),
-                                OAuthConstants.AuthorizationCodeState.EXPIRED);
+                        OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO()
+                                .updateAuthorizationCodeState(authContextTokenDO.getAuthzCode(),
+                                        OAuthConstants.AuthorizationCodeState.EXPIRED);
                     } else if (authContextTokenDO.getAuthzCodeDO() == null && authContextTokenDO.getTokenId() != null) {
                         if (log.isDebugEnabled()) {
                             log.debug("Auth Code Deactivating Task is started to run");
@@ -66,16 +63,16 @@ public class AuthPersistenceTask implements Runnable {
                         AuthzCodeDO authzCodeDO = new AuthzCodeDO();
                         authzCodeDO.setAuthorizationCode(authContextTokenDO.getAuthzCode());
                         authzCodeDO.setOauthTokenId(authContextTokenDO.getTokenId());
-                        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-                        tokenMgtDAO.deactivateAuthorizationCode(authzCodeDO);
+                        OAuthTokenPersistenceFactory.getInstance()
+                                .getAuthorizationCodeDAO().deactivateAuthorizationCode(authzCodeDO);
                     } else {
                         if (log.isDebugEnabled()) {
                             log.debug("Auth Token Data persisting Task is started to run");
                         }
-                        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-                        tokenMgtDAO.persistAuthorizationCode(authContextTokenDO.getAuthzCode(),
-                                authContextTokenDO.getConsumerKey(), authContextTokenDO.getCallbackUrl(),
-                                authContextTokenDO.getAuthzCodeDO());
+                        OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO()
+                                .insertAuthorizationCode(authContextTokenDO.getAuthzCode(),
+                                        authContextTokenDO.getConsumerKey(), authContextTokenDO.getCallbackUrl(),
+                                        authContextTokenDO.getAuthzCodeDO());
                     }
                 }
             } catch (InterruptedException | IdentityOAuth2Exception e) {

@@ -37,22 +37,25 @@ import javax.servlet.http.HttpServletResponse;
  * </ol>
  */
 public class DefaultOIDCProcessor implements OIDCProcessor {
-    private static Log log = LogFactory.getLog(DefaultOIDCProcessor.class);
+
+    private static final Log log = LogFactory.getLog(DefaultOIDCProcessor.class);
     private static DefaultOIDCProcessor defaultOidcProcessor = new DefaultOIDCProcessor();
 
-
     private DefaultOIDCProcessor() {
+
         if (log.isDebugEnabled()) {
             log.debug("Initializing DefaultOIDCProcessor for OpenID connect discovery processor.");
         }
     }
 
     public static DefaultOIDCProcessor getInstance() {
+
         return defaultOidcProcessor;
     }
 
     public OIDProviderConfigResponse getResponse(HttpServletRequest request, String tenantDomain) throws
             OIDCDiscoveryEndPointException, ServerConfigurationException {
+
         OIDCProviderRequestBuilder requestBuilder = new DefaultOIDCProviderRequestBuilder();
         OIDProviderRequest requestObject = requestBuilder.buildRequest(request, tenantDomain);
         ProviderConfigBuilder responseBuilder = new ProviderConfigBuilder();
@@ -60,6 +63,7 @@ public class DefaultOIDCProcessor implements OIDCProcessor {
     }
 
     public int handleError(OIDCDiscoveryEndPointException error) {
+
         if (log.isDebugEnabled()) {
             log.debug(error);
         }
@@ -73,10 +77,9 @@ public class DefaultOIDCProcessor implements OIDCProcessor {
         } else if (errorCode.equals(OIDCDiscoveryEndPointException.ERROR_CODE_JSON_EXCEPTION)) {
             log.error(OIDCDiscoveryEndPointException.ERROR_MESSAGE_JSON_EXCEPTION, error);
         } else {
-            log.error("Internal server error occured. ", error);
+            log.error("Internal server error occurred. ", error);
         }
         return HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
     }
-
 
 }

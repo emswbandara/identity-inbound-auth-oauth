@@ -22,9 +22,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.store.SessionDataStore;
 import org.wso2.carbon.identity.application.common.cache.BaseCache;
+import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.utils.CarbonUtils;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Stores authenticated user attributes and OpenID Connect specific attributes during OIDC Authorization request
@@ -68,12 +71,31 @@ public class AuthorizationGrantCache extends BaseCache<AuthorizationGrantCacheKe
     public void addToCacheByToken(AuthorizationGrantCacheKey key, AuthorizationGrantCacheEntry entry) {
         super.addToCache(key, entry);
         String tokenId = entry.getTokenId();
-        if (tokenId != null) {
-            storeToSessionStore(tokenId, entry);
-        } else {
-            storeToSessionStore(replaceFromTokenId(key.getUserAttributesId()), entry);
+        if (tokenId == null) {
+            tokenId = replaceFromTokenId(key.getUserAttributesId());
+            entry.setTokenId(tokenId);
         }
+        storeToSessionStore(tokenId, entry);
 
+    }
+
+    /**
+     * Retrieves cache entry by token id.
+     *
+     * @param key     AuthorizationGrantCacheKey
+     * @param tokenId TokenId
+     * @return AuthorizationGrantCacheEntry
+     */
+    public AuthorizationGrantCacheEntry getValueFromCacheByTokenId(AuthorizationGrantCacheKey key, String tokenId) {
+
+        AuthorizationGrantCacheEntry cacheEntry = super.getValueFromCache(key);
+        if (cacheEntry == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Getting cache entry from session store using tokenId: " + tokenId);
+            }
+            cacheEntry = getFromSessionStore(tokenId);
+        }
+        return cacheEntry;
     }
 
     /**
@@ -101,6 +123,16 @@ public class AuthorizationGrantCache extends BaseCache<AuthorizationGrantCacheKe
     }
 
     /**
+     * Clears a cache entry by tokenId
+     *
+     * @param key Key to clear cache.
+     */
+    public void clearCacheEntryByTokenId(AuthorizationGrantCacheKey key, String tokenId) {
+        super.clearCacheEntry(key);
+        clearFromSessionStore(tokenId);
+    }
+
+    /**
      * Add a cache entry by authorization code.
      *
      * @param key   Key which cache entry is indexed.
@@ -108,6 +140,9 @@ public class AuthorizationGrantCache extends BaseCache<AuthorizationGrantCacheKe
      */
     public void addToCacheByCode(AuthorizationGrantCacheKey key, AuthorizationGrantCacheEntry entry) {
         super.addToCache(key, entry);
+        long validityPeriodNano = TimeUnit.SECONDS.toNanos(
+                OAuthServerConfiguration.getInstance().getAuthorizationCodeValidityPeriodInSeconds());
+        entry.setValidityPeriod(validityPeriodNano);
         storeToSessionStore(entry.getCodeId(), entry);
     }
 
@@ -137,16 +172,29 @@ public class AuthorizationGrantCache extends BaseCache<AuthorizationGrantCacheKe
     }
 
     /**
+     * Clears a cache entry by authorization code Id.
+     *
+     * @param key         Key to clear cache
+     * @param authzCodeId AuthorizationCodeId
+     */
+    public void clearCacheEntryByCodeId(AuthorizationGrantCacheKey key, String authzCodeId) {
+
+        super.clearCacheEntry(key);
+        clearFromSessionStore(authzCodeId);
+    }
+
+    /**
      * Retrieve the authorization code id using the authorization code
      * @param authzCode Authorization code
      * @return CODE_ID from the database
      */
     private String replaceFromCodeId(String authzCode) {
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         try {
-            return tokenMgtDAO.getCodeIdByAuthorizationCode(authzCode);
+            return OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO()
+                    .getCodeIdByAuthorizationCode(authzCode);
         } catch (IdentityOAuth2Exception e) {
-            log.error("Failed to retrieve authorization code id by authorization code from store for - ." + authzCode, e);
+            log.error("Failed to retrieve authorization code id by authorization code from store for - ." + authzCode,
+                    e);
         }
         return authzCode;
     }
@@ -157,9 +205,8 @@ public class AuthorizationGrantCache extends BaseCache<AuthorizationGrantCacheKe
      * @return TOKEN_ID from the database
      */
     private String replaceFromTokenId(String keyValue) {
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         try {
-            return tokenMgtDAO.getTokenIdByToken(keyValue);
+            return OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO().getTokenIdByAccessToken(keyValue);
         } catch (IdentityOAuth2Exception e) {
             log.error("Failed to retrieve token id by token from store for - ." + keyValue, e);
         }

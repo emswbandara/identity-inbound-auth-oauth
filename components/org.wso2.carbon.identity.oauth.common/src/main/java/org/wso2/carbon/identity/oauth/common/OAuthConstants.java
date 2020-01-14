@@ -18,10 +18,19 @@
 
 package org.wso2.carbon.identity.oauth.common;
 
+/**
+ * This class define OAuth related constants.
+ */
 public final class OAuthConstants {
+
+    //OIDC request headers.
+    public static final String AMR = "amr";
+    public static final String ACR = "acr";
+    public static final String AT_HASH = "at_hash";
 
     //OAuth2 request headers.
     public static final String HTTP_REQ_HEADER_AUTHZ = "Authorization";
+    public static final String HTTP_REQ_HEADER_AUTH_METHOD_BASIC = "Basic";
 
     // OAuth2 response headers
     public static final String HTTP_RESP_HEADER_CACHE_CONTROL = "Cache-Control";
@@ -50,6 +59,10 @@ public final class OAuthConstants {
     // Constants to be used by error pages
     public static final String OAUTH_ERROR_CODE = "oauthErrorCode";
     public static final String OAUTH_ERROR_MESSAGE = "oauthErrorMsg";
+
+    // Authentication Error Response according to specifications
+    public static final String OAUTH_ERROR = "error";
+    public static final String OAUTH_ERROR_DESCRIPTION = "error_description";
 
     // Constants for paging in OAuth UI
     public static final int DEFAULT_ITEMS_PER_PAGE = 10;
@@ -80,7 +93,13 @@ public final class OAuthConstants {
     public static final String CLIENT_AUTH_CREDENTIAL_VALIDATION = "StrictClientCredentialValidation";
     public static final String ACCESS_TOKEN = "accessToken";
     public static final String ID_TOKEN = "id_token";
+    public static final String USERINFO = "userinfo";
     public static final String AUTHZ_CODE = "AuthorizationCode";
+
+    //Constants for reading EndpointConfig.properties
+    public static final String CONFIG_RELATIVE_PATH = "./repository/conf/identity/EndpointConfig.properties";
+    public static final String CLIENT_TRUST_STORE_PASSWORD = "Carbon.Security.TrustStore.Password";
+    public static final String CLIENT_TRUST_STORE = "client.trustStore";
 
     //OAuth PKCE request parameters
     public static final String OAUTH_PKCE_CODE_VERIFIER = "code_verifier";
@@ -90,6 +109,11 @@ public final class OAuthConstants {
     public static final String OAUTH_PKCE_PLAIN_CHALLENGE = "plain";
     //Response types
     public static final String NONE = "none";
+    public static final String TOKEN = "token";
+    public static final String CODE_TOKEN = "code token";
+    public static final String CODE_IDTOKEN = "code id_token";
+    public static final String CODE_IDTOKEN_TOKEN = "code id_token token";
+    public static final String IDTOKEN_TOKEN = "id_token token";
 
     //Constants used for OAuth/OpenID Connect Configuration UI
     public static final String CALLBACK_URL_REGEXP_PREFIX = "regexp=";
@@ -107,10 +131,11 @@ public final class OAuthConstants {
     public static final String OAUTH_INTERCEPTOR_PROXY = "OauthDataInterceptorHandlerProxy";
 
     public static final String RESPONSE_HEADERS_PROPERTY = "RESPONSE_HEADERS";
-
+    public static final String CLIENT_AUTHN_CONTEXT = "oauth.client.authentication.context";
 
     //Constants used for multiple scopes
     public static final String OIDC_SCOPE_CONFIG_PATH = "oidc-scope-config.xml";
+    public static final String OAUTH_SCOPE_BINDING_PATH = "oauth-scope-bindings.xml";
     public static final String SCOPE_RESOURCE_PATH = "/oidc";
 
     public static final String TENANT_NAME_FROM_CONTEXT = "TenantNameFromContext";
@@ -118,19 +143,33 @@ public final class OAuthConstants {
     //Oauth2 sp expire time configuration.
     public static final String TOKEN_EXPIRE_TIME_RESOURCE_PATH = "/identity/config/spTokenExpireTime";
 
+    private OAuthConstants() {
+
+    }
+
+    /**
+     * This class define grant types constants.
+     */
     public static class GrantTypes {
+
         public static final String IMPLICIT = "implicit";
         public static final String TOKEN = "token";
         public static final String CLIENT_CREDENTIALS = "client_credentials";
         public static final String IWA_NTLM = "iwa:ntlm";
         public static final String PASSWORD = "password";
         public static final String AUTHORIZATION_CODE = "authorization_code";
+        public static final String REFRESH_TOKEN = "refresh_token";
 
         private GrantTypes() {
+
         }
     }
 
+    /**
+     * Define OAuth versions.
+     */
     public static class OAuthVersions {
+
         public static final String VERSION_1A = "OAuth-1.0a";
         public static final String VERSION_2 = "OAuth-2.0";
 
@@ -139,8 +178,11 @@ public final class OAuthConstants {
         }
     }
 
-    // OAuth1.0a request parameters
+    /**
+     * Define OAuth1.0a request parameters.
+     */
     public static class OAuth10AParams {
+
         public static final String OAUTH_VERSION = "oauth_version";
         public static final String OAUTH_NONCE = "oauth_nonce";
         public static final String OAUTH_TIMESTAMP = "oauth_timestamp";
@@ -156,22 +198,34 @@ public final class OAuthConstants {
         }
     }
 
-    // OAuth2.0 request parameters
+    /**
+     * Define OAuth2.0 request parameters
+     */
     public static class OAuth20Params {
+
         public static final String SCOPE = "scope";
         public static final String PROMPT = "prompt";
         public static final String NONCE = "nonce";
         public static final String DISPLAY = "display";
         public static final String ID_TOKEN_HINT = "id_token_hint";
         public static final String LOGIN_HINT = "login_hint";
+        public static final String AUTH_TIME = "auth_time";
+        public static final String ESSENTIAL = "essential";
+        public static final String USERINFO = "userinfo";
+        public static final String CLIENT_ID = "client_id";
+        public static final String REDIRECT_URI = "redirect_uri";
+        public static final String STATE = "state";
 
         private OAuth20Params() {
 
         }
     }
 
-    // OIDC prompt values
+    /**
+     * Define OIDC prompt values
+     */
     public static class Prompt {
+
         public static final String LOGIN = "login";
         public static final String CONSENT = "consent";
         public static final String NONE = "none";
@@ -182,8 +236,11 @@ public final class OAuthConstants {
         }
     }
 
-    // OAuth1.0a endpoints
+    /**
+     * Define OAuth1.0a endpoints.
+     */
     public static class OAuth10AEndpoints {
+
         public static final String ACCESS_TOKEN_URL = "/access-token";
         public static final String REQUEST_TOKEN_URL = "/request-token";
         public static final String AUTHORIZE_TOKEN_URL = "/authorize-token";
@@ -193,8 +250,11 @@ public final class OAuthConstants {
         }
     }
 
-    // OAuth2.0 endpoints
+    /**
+     * Define OAuth2.0 endpoints
+     */
     public static class OAuth20Endpoints {
+
         public static final String OAUTH20_ACCESS_TOKEN_URL = "/token";
         public static final String OAUTH20_AUTHORIZE_TOKEN_URL = "/authorize";
 
@@ -203,7 +263,11 @@ public final class OAuthConstants {
         }
     }
 
+    /**
+     * Define consent related constants.
+     */
     public static class Consent {
+
         public static final String DENY = "deny";
         public static final String APPROVE = "approve";
         public static final String APPROVE_ALWAYS = "approveAlways";
@@ -213,7 +277,11 @@ public final class OAuthConstants {
         }
     }
 
+    /**
+     * Define constants for each token state.
+     */
     public static class TokenStates {
+
         public static final String TOKEN_STATE_ACTIVE = "ACTIVE";
         public static final String TOKEN_STATE_REVOKED = "REVOKED";
         public static final String TOKEN_STATE_EXPIRED = "EXPIRED";
@@ -224,7 +292,11 @@ public final class OAuthConstants {
         }
     }
 
+    /**
+     * Define constants for authorization code state.
+     */
     public static class AuthorizationCodeState {
+
         public static final String ACTIVE = "ACTIVE";
         public static final String REVOKED = "REVOKED";
         public static final String EXPIRED = "EXPIRED";
@@ -235,7 +307,11 @@ public final class OAuthConstants {
         }
     }
 
+    /**
+     * Define constants for OAuth app states.
+     */
     public static class OauthAppStates {
+
         public static final String APP_STATE_ACTIVE = "ACTIVE";
         public static final String APP_STATE_REVOKED = "REVOKED";
 
@@ -244,21 +320,34 @@ public final class OAuthConstants {
         }
     }
 
+    /**
+     * Define constants for OAuth errors.
+     */
     public static class OAuthError {
+
+        private OAuthError() {
+
+        }
+
+        /**
+         * Define Token response constants.
+         */
         public static class TokenResponse {
-            public static final String UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD = "unsupported_client_authentication_method";
+
+            public static final String UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD =
+                    "unsupported_client_authentication_method";
 
             private TokenResponse() {
 
             }
         }
-
-        private OAuthError() {
-
-        }
     }
 
+    /**
+     * Define supported scope constants.
+     */
     public static class Scope {
+
         public static final String OPENID = "openid";
         public static final String OAUTH2 = "oauth2";
         public static final String OIDC = "oidc";
@@ -268,18 +357,104 @@ public final class OAuthConstants {
         }
     }
 
+    /**
+     * Define constants for user types.
+     */
     public static class UserType {
+
         public static final String APPLICATION = "APPLICATION";
         public static final String APPLICATION_USER = "APPLICATION_USER";
         public static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
         public static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
+        public static final String LOCAL_USER_TYPE = "LOCAL";
+        public static final String LEGACY_USER_TYPE = "LEGACY";
 
         private UserType() {
 
         }
     }
 
-    private OAuthConstants() {
+    /**
+     * OIDC claims constants.
+     */
+    public static class OIDCClaims {
 
+        public static final String UPDATED_AT = "updated_at";
+        public static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
+        public static final String EMAIL_VERIFIED = "email_verified";
+        public static final String ADDRESS = "address";
+        public static final String CUSTOM = "custom";
+        public static final String AZP = "azp";
+        public static final String AUTH_TIME = "auth_time";
+        public static final String AT_HASH = "at_hash";
+        public static final String NONCE = "nonce";
+        public static final String ACR = "acr";
+        public static final String MAX_AGE = "max_age";
+        // OIDC Specification : http://openid.net/specs/openid-connect-core-1_0.html
+        public static final String C_HASH = "c_hash";
+        public static final String SESSION_ID_CLAIM = "sid";
+        public static final String REALM = "realm";
+        public static final String TENANT = "tenant";
+        public static final String USERSTORE = "userstore";
+
+        private OIDCClaims() {
+
+        }
+    }
+
+    /**
+     * OIDC config property constants.
+     */
+    public static class OIDCConfigProperties {
+
+        public static final String REQUEST_OBJECT_SIGNED = "requestObjectSigned";
+        public static final String ID_TOKEN_ENCRYPTED = "idTokenEncrypted";
+        public static final String ID_TOKEN_ENCRYPTION_ALGORITHM = "idTokenEncryptionAlgorithm";
+        public static final String ID_TOKEN_ENCRYPTION_METHOD = "idTokenEncryptionMethod";
+        public static final String NO_LOGOUT_SELECTED = "none";
+        public static final String BACK_CHANNEL_LOGOUT = "backchannel";
+        public static final String FRONT_CHANNEL_LOGOUT = "frontchannel";
+        public static final String BACK_CHANNEL_LOGOUT_URL = "backChannelLogoutURL";
+        public static final String FRONT_CHANNEL_LOGOUT_URL = "frontchannelLogoutURL";
+        public static final String TOKEN_TYPE = "tokenType";
+        public static final String BYPASS_CLIENT_CREDENTIALS = "bypassClientCredentials";
+        public static final String RENEW_REFRESH_TOKEN = "renewRefreshToken";
+        public static final String TOKEN_BINDING_TYPE = "tokenBindingType";
+
+        private OIDCConfigProperties() {
+
+        }
+    }
+
+    /**
+     * Signature algorithms constants.
+     */
+    public static class SignatureAlgorithms {
+
+        public static final String NONE = "NONE";
+        public static final String SHA256_WITH_RSA = "SHA256withRSA";
+        public static final String SHA384_WITH_RSA = "SHA384withRSA";
+        public static final String SHA512_WITH_RSA = "SHA512withRSA";
+        public static final String SHA256_WITH_HMAC = "SHA256withHMAC";
+        public static final String SHA384_WITH_HMAC = "SHA384withHMAC";
+        public static final String SHA512_WITH_HMAC = "SHA512withHMAC";
+        public static final String SHA256_WITH_EC = "SHA256withEC";
+        public static final String SHA384_WITH_EC = "SHA384withEC";
+        public static final String SHA512_WITH_EC = "SHA512withEC";
+        public static final String SHA256 = "SHA-256";
+        public static final String SHA384 = "SHA-384";
+        public static final String SHA512 = "SHA-512";
+
+        private SignatureAlgorithms() {
+
+        }
+    }
+
+    /**
+     * Define token binding constants.
+     */
+    public static class TokenBindings {
+
+        public static final String NONE = "NONE";
     }
 }

@@ -29,23 +29,29 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * OAuth consumer apps DAO.
+ */
 public class OAuthConsumerDAO {
 
-    public static final Log log = LogFactory.getLog(OAuthConsumerDAO.class);
+    public static final Log LOG = LogFactory.getLog(OAuthConsumerDAO.class);
+    public static final String OUT_OF_BAND = "oob";
     private TokenPersistenceProcessor persistenceProcessor;
+    private boolean isHashDisabled = OAuth2Util.isHashDisabled();
 
     public OAuthConsumerDAO() {
 
         try {
             persistenceProcessor = OAuthServerConfiguration.getInstance().getPersistenceProcessor();
         } catch (IdentityOAuth2Exception e) {
-            log.error("Error retrieving TokenPersistenceProcessor. Defaulting to PlainTextProcessor", e);
+            LOG.error("Error retrieving TokenPersistenceProcessor. Defaulting to PlainTextProcessor", e);
             persistenceProcessor = new PlainTextPersistenceProcessor();
         }
 
@@ -60,34 +66,81 @@ public class OAuthConsumerDAO {
      */
     public String getOAuthConsumerSecret(String consumerKey) throws IdentityOAuthAdminException {
         String consumerSecret = null;
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement prepStmt = null;
-        ResultSet resultSet = null;
+        if (isHashDisabled) {
+            Connection connection = IdentityDatabaseUtil.getDBConnection(false);
+            PreparedStatement prepStmt = null;
+            ResultSet resultSet = null;
 
-        try {
-            prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.GET_CONSUMER_SECRET);
-            prepStmt.setString(1, persistenceProcessor.getProcessedClientId(consumerKey));
-            resultSet = prepStmt.executeQuery();
+            try {
+                prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.GET_CONSUMER_SECRET);
+                prepStmt.setString(1, persistenceProcessor.getProcessedClientId(consumerKey));
+                resultSet = prepStmt.executeQuery();
 
-            if (resultSet.next()) {
-                consumerSecret = persistenceProcessor.getPreprocessedClientSecret(resultSet.getString(1));
-            } else {
-                if(log.isDebugEnabled()) {
-                    log.debug("Invalid Consumer Key : " + consumerKey);
+                if (resultSet.next()) {
+                        consumerSecret = persistenceProcessor.getPreprocessedClientSecret(resultSet.getString(1));
+                } else {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Invalid Consumer Key : " + consumerKey);
+                    }
                 }
+            } catch (SQLException e) {
+                throw new IdentityOAuthAdminException("Error when reading the consumer secret for consumer key : " +
+                        consumerKey, e);
+            } catch (IdentityOAuth2Exception e) {
+                throw new IdentityOAuthAdminException("Error occurred while processing client id and client secret " +
+                        "by TokenPersistenceProcessor", e);
+            } finally {
+                IdentityDatabaseUtil.closeAllConnections(connection, resultSet, prepStmt);
             }
-            connection.commit();
-        } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error when reading the consumer secret for consumer key : " +
-                    consumerKey, e);
-        } catch (IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error occurred while processing client id and client secret by " +
-                    "TokenPersistenceProcessor", e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, resultSet, prepStmt);
+        } else {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Consumer secret hashing enabled. Returning client secret as null.");
+            }
         }
 
         return consumerSecret;
+
+    }
+
+    /**
+     * Check whether the provided consumerKey, consumerSecret combination is exist or not in the database.
+     *
+     * @param consumerKey Consumer key.
+     * @param consumerSecret Consumer secret.
+     * @return Check the provided consumerKey, consumerSecret combination is exist or not.
+     * @throws IdentityOAuthAdminException Error when reading consumer key, consumer secret from the database.
+     */
+    public boolean isConsumerSecretExist(String consumerKey, String consumerSecret)
+            throws IdentityOAuthAdminException {
+
+        PreparedStatement prepStmt = null;
+        ResultSet resultSet = null;
+        Connection connection = null;
+        try {
+            connection = IdentityDatabaseUtil.getDBConnection(false);
+            String consumerSecretHash = persistenceProcessor.getProcessedClientSecret(consumerSecret);
+            prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.EXISTENCE_OF_CONSUMER_SECRET);
+            prepStmt.setString(1, persistenceProcessor.getProcessedClientId(consumerKey));
+            prepStmt.setString(2, consumerSecretHash);
+            resultSet = prepStmt.executeQuery();
+
+            if (resultSet.next()) {
+                return true;
+            } else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug(String.format("Invalid Consumer Secret : %s for Consumer Key : %s", consumerSecret,
+                            consumerKey));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IdentityOAuthAdminException("Error when reading the consumer key for consumer secret : " +
+                    consumerSecret, e);
+        } catch (IdentityOAuth2Exception e) {
+            throw new IdentityOAuthAdminException("Error occurred while processing client secret ", e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, resultSet, prepStmt);
+        }
+        return false;
 
     }
 
@@ -101,8 +154,9 @@ public class OAuthConsumerDAO {
             statement.setString(1, newSecretKey);
             statement.setString(2, consumerKey);
             statement.execute();
-            connection.commit();
+            IdentityDatabaseUtil.commitTransaction(connection);
         } catch (SQLException e) {
+            IdentityDatabaseUtil.rollbackTransaction(connection);
             throw new IdentityApplicationManagementException("Error while executing the SQL statement.", e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, statement);
@@ -119,12 +173,13 @@ public class OAuthConsumerDAO {
      */
     public String getAuthenticatedUsername(String clientId, String clientSecret) throws IdentityOAuthAdminException {
         String username = "";
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
 
         try {
-            prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.GET_USERNAME_FOR_KEY_AND_SECRET);
+            prepStmt =
+                    connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.GET_USERNAME_FOR_KEY_AND_SECRET);
             prepStmt.setString(1, clientId);
             prepStmt.setString(2, clientSecret);
             resultSet = prepStmt.executeQuery();
@@ -132,12 +187,12 @@ public class OAuthConsumerDAO {
             if (resultSet.next()) {
                 username = resultSet.getString(1);
             } else {
-                log.debug("Invalid client id : " + clientId);
+                LOG.debug("Invalid client id : " + clientId);
             }
-            connection.commit();
         } catch (SQLException e) {
-            log.error("Error when executing the SQL : " + SQLQueries.OAuthConsumerDAOSQLQueries.GET_USERNAME_FOR_KEY_AND_SECRET);
-            log.error(e.getMessage(), e);
+            LOG.error("Error when executing the SQL : " +
+                    SQLQueries.OAuthConsumerDAOSQLQueries.GET_USERNAME_FOR_KEY_AND_SECRET);
+            LOG.error(e.getMessage(), e);
             throw new IdentityOAuthAdminException("Error while reading username for client id : " + clientId +
                     ", and consumer secret : " + clientSecret);
         } finally {
@@ -154,12 +209,12 @@ public class OAuthConsumerDAO {
      * @param token         OAuth token, this could be a request token(temporary token) or a access token
      * @param isAccessToken True, if it is as access token
      * @return Token Secret
-     * @throws IdentityOAuthAdminException Error when accessing the token secret from the persistence store.
+     * @throws IdentityException Error when accessing the token secret from the persistence store.
      */
     public String getOAuthTokenSecret(String token, Boolean isAccessToken) throws IdentityException {
 
         String tokenSecret = null;
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
         String sqlStmt;
@@ -174,8 +229,6 @@ public class OAuthConsumerDAO {
             prepStmt = connection.prepareStatement(sqlStmt);
             prepStmt.setString(1, token);
             resultSet = prepStmt.executeQuery();
-            connection.commit();
-
             if (resultSet.next()) {
                 tokenSecret = resultSet.getString(1);
             } else {
@@ -204,7 +257,6 @@ public class OAuthConsumerDAO {
      */
     public void createOAuthRequestToken(String consumerKey, String oauthToken, String oauthSecret,
                                         String userCallback, String scope) throws IdentityOAuthAdminException {
-        final String OUT_OF_BAND = "oob";
         if (userCallback == null || OUT_OF_BAND.equals(userCallback)) {
             userCallback = getCallbackURLOfApp(consumerKey);
         }
@@ -222,12 +274,12 @@ public class OAuthConsumerDAO {
             prepStmt.setString(6, consumerKey);
 
             prepStmt.execute();
-            connection.commit();
+            IdentityDatabaseUtil.commitTransaction(connection);
 
         } catch (SQLException e) {
-            log.error("Error when executing the SQL : " + SQLQueries.OAuthConsumerDAOSQLQueries.ADD_OAUTH_REQ_TOKEN);
-            log.error(e.getMessage(), e);
-            throw new IdentityOAuthAdminException("Error when creating the request token for consumer : " + consumerKey);
+            IdentityDatabaseUtil.rollbackTransaction(connection);
+            throw new IdentityOAuthAdminException("Error when creating the request token for consumer : " +
+                    consumerKey, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
         }
@@ -255,9 +307,10 @@ public class OAuthConsumerDAO {
             prepStmt.setString(4, oauthToken);
 
             prepStmt.execute();
-            connection.commit();
+            IdentityDatabaseUtil.commitTransaction(connection);
 
         } catch (SQLException e) {
+            IdentityDatabaseUtil.rollbackTransaction(connection);
             throw new IdentityOAuthAdminException("Error when authorizing the request token : " + oauthToken);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
@@ -272,7 +325,7 @@ public class OAuthConsumerDAO {
 
     public Parameters getRequestToken(String oauthToken) throws IdentityException {
         Parameters params = new Parameters();
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
 
@@ -293,7 +346,6 @@ public class OAuthConsumerDAO {
             } else {
                 throw IdentityException.error("Invalid request token : " + oauthToken);
             }
-            connection.commit();
         } catch (SQLException e) {
             throw IdentityException.error("Error when retrieving request token from the persistence store : " +
                     oauthToken);
@@ -305,7 +357,8 @@ public class OAuthConsumerDAO {
     }
 
     public void issueAccessToken(String consumerKey, String accessToken, String accessTokenSecret,
-                                 String requestToken, String authorizedUser, String scope) throws IdentityOAuthAdminException {
+                                 String requestToken, String authorizedUser, String scope)
+            throws IdentityOAuthAdminException {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement removeReqTokStmt = null;
@@ -324,11 +377,12 @@ public class OAuthConsumerDAO {
             issueAccessTokStmt.setString(5, authorizedUser);
             issueAccessTokStmt.execute();
 
-            connection.commit();
+            IdentityDatabaseUtil.commitTransaction(connection);
 
         } catch (SQLException e) {
-            log.error(e.getMessage(), e);
-            throw new IdentityOAuthAdminException("Error when creating the request token for consumer : " + consumerKey);
+            IdentityDatabaseUtil.rollbackTransaction(connection);
+            throw new IdentityOAuthAdminException("Error when creating the request token for consumer : " +
+                    consumerKey, e);
         } finally {
             IdentityDatabaseUtil.closeStatement(issueAccessTokStmt);
             IdentityDatabaseUtil.closeAllConnections(connection, null, removeReqTokStmt);
@@ -344,12 +398,13 @@ public class OAuthConsumerDAO {
      * @param oauthToken  Access Token
      * @param reqScope    Scope in the request
      * @return Authorized Username
-     * @throws IdentityException Error when reading token information from persistence store or invalid token or invalid scope.
+     * @throws IdentityException Error when reading token information from persistence store or invalid token or
+     * invalid scope.
      */
     public String validateAccessToken(String consumerKey, String oauthToken, String reqScope)
             throws IdentityException {
 
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
         String scope = null;
@@ -366,7 +421,6 @@ public class OAuthConsumerDAO {
             } else {
                 throw IdentityException.error("Invalid access token : " + oauthToken);
             }
-            connection.commit();
         } catch (SQLException e) {
             throw new IdentityOAuthAdminException("Error when reading the callback url for consumer key : " +
                     consumerKey, e);
@@ -383,7 +437,7 @@ public class OAuthConsumerDAO {
 
     private String getCallbackURLOfApp(String consumerKey) throws IdentityOAuthAdminException {
         String callbackURL = null;
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
 
@@ -395,7 +449,6 @@ public class OAuthConsumerDAO {
             if (resultSet.next()) {
                 callbackURL = resultSet.getString(1);
             }
-            connection.commit();
         } catch (SQLException e) {
             throw new IdentityOAuthAdminException("Error when reading the callback url for consumer key : " +
                     consumerKey, e);
@@ -408,7 +461,7 @@ public class OAuthConsumerDAO {
 
     private String getCallbackURLOfReqToken(String oauthToken) throws IdentityOAuthAdminException {
         String callbackURL = null;
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
 
@@ -420,7 +473,6 @@ public class OAuthConsumerDAO {
             if (resultSet.next()) {
                 callbackURL = resultSet.getString(1);
             }
-            connection.commit();
         } catch (SQLException e) {
             throw new IdentityOAuthAdminException("Error when reading the callback url for OAuth Token : " +
                     oauthToken, e);

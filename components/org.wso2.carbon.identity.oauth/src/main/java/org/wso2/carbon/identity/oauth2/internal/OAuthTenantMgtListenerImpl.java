@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.oauth2.internal;
 import org.wso2.carbon.identity.core.AbstractIdentityTenantMgtListener;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
@@ -33,17 +33,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Tenant management listener for OAuth related functionality.
+ */
 public class OAuthTenantMgtListenerImpl extends AbstractIdentityTenantMgtListener {
 
     @Override
     public void onPreDelete(int tenantId) throws StratosException {
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
+
+        clearTokenData(tenantId);
+    }
+
+    @Override
+    public void onTenantDeactivation(int tenantId) throws StratosException {
+
+        clearTokenData(tenantId);
+    }
+
+    private void clearTokenData(int tenantId) throws StratosException {
+
         try {
-            Set<AccessTokenDO> accessTokenDOs = tokenMgtDAO.getAccessTokensOfTenant(tenantId);
+            Set<AccessTokenDO> accessTokenDOs = OAuthTokenPersistenceFactory.getInstance()
+                    .getAccessTokenDAO().getAccessTokensByTenant(tenantId);
             Map<String, AccessTokenDO> latestAccessTokens = new HashMap<>();
             for (AccessTokenDO accessTokenDO : accessTokenDOs) {
                 String keyString = accessTokenDO.getConsumerKey() + ":" + accessTokenDO.getAuthzUser() + ":" +
-                        OAuth2Util.buildScopeString(accessTokenDO.getScope());
+                        OAuth2Util.buildScopeString(accessTokenDO.getScope()) + ":"
+                        + accessTokenDO.getAuthzUser().getFederatedIdPName();
                 AccessTokenDO accessTokenDOFromMap = latestAccessTokens.get(keyString);
                 if (accessTokenDOFromMap != null) {
                     if (accessTokenDOFromMap.getIssuedTime().before(accessTokenDO.getIssuedTime())) {
@@ -63,15 +79,19 @@ public class OAuthTenantMgtListenerImpl extends AbstractIdentityTenantMgtListene
             for (Map.Entry entry : latestAccessTokens.entrySet()) {
                 tokensToRevoke.add(((AccessTokenDO) entry.getValue()).getAccessToken());
             }
-            tokenMgtDAO.revokeTokens(tokensToRevoke.toArray(new String[tokensToRevoke.size()]));
-            List<AuthzCodeDO> latestAuthzCodes = tokenMgtDAO.getLatestAuthorizationCodesOfTenant(tenantId);
+            OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                    .revokeAccessTokens(tokensToRevoke.toArray(new String[tokensToRevoke.size()]),
+                            OAuth2Util.isHashEnabled());
+            List<AuthzCodeDO> latestAuthzCodes = OAuthTokenPersistenceFactory.getInstance()
+                    .getAuthorizationCodeDAO().getLatestAuthorizationCodesByTenant(tenantId);
             for (AuthzCodeDO authzCodeDO : latestAuthzCodes) {
                 // remove the authorization code from the cache
                 OAuthUtil.clearOAuthCache(authzCodeDO.getConsumerKey() + ":" +
                         authzCodeDO.getAuthorizationCode());
 
             }
-            tokenMgtDAO.deactivateAuthorizationCode(latestAuthzCodes);
+            OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO()
+                    .deactivateAuthorizationCodes(latestAuthzCodes);
         } catch (IdentityOAuth2Exception e) {
             throw new StratosException("Error occurred while revoking the access tokens in tenant " + tenantId, e);
         }

@@ -24,25 +24,39 @@ import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 
-import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OAuth20Params.SCOPE;
-import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OAuth20Params.NONCE;
-
 import javax.servlet.http.HttpServletRequest;
 
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OAuth20Params.SCOPE;
+
+/**
+ * Validator for IDtoken response.
+ */
 public class IDTokenResponseValidator extends TokenValidator {
 
     public IDTokenResponseValidator() {
+
+    }
+
+    /**
+     * Method to check whether the scope parameter string contains 'openid' as a scope.
+     *
+     * @param scope
+     * @return
+     */
+    private static boolean containOIDCScope(String scope) {
+
+        String[] scopeArray = scope.split("\\s+");
+        for (String openidscope : scopeArray) {
+            if (openidscope.equals(OAuthConstants.Scope.OPENID)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void validateRequiredParameters(HttpServletRequest request) throws OAuthProblemException {
 
         super.validateRequiredParameters(request);
-
-        String nonce = request.getParameter(NONCE);
-        if (StringUtils.isBlank(nonce)) {
-            throw OAuthProblemException.error(OAuthError.TokenResponse.INVALID_REQUEST)
-                    .description("\'response_type\' contains \'id_token\'; but \'nonce\' parameter not found");
-        }
 
         // for id_token response type, the scope parameter should contain 'openid' as one of the scopes.
         String openIdScope = request.getParameter(SCOPE);
@@ -55,6 +69,7 @@ public class IDTokenResponseValidator extends TokenValidator {
 
     @Override
     public void validateMethod(HttpServletRequest request) throws OAuthProblemException {
+
         String method = request.getMethod();
         if (!OAuth.HttpMethod.GET.equals(method) && !OAuth.HttpMethod.POST.equals(method)) {
             throw OAuthProblemException.error(OAuthError.CodeResponse.INVALID_REQUEST)
@@ -64,25 +79,6 @@ public class IDTokenResponseValidator extends TokenValidator {
 
     @Override
     public void validateContentType(HttpServletRequest request) throws OAuthProblemException {
-    }
 
-    /**
-     * Method to check whether the scope parameter string contains 'openid' as a scope.
-     *
-     * @param scope
-     * @return
-     */
-    private static boolean containOIDCScope(String scope) {
-        if (StringUtils.isBlank(scope)) {
-            return false;
-        }
-
-        String[] scopeArray = scope.split("\\s+");
-        for (String openidscope : scopeArray) {
-            if (openidscope.equals(OAuthConstants.Scope.OPENID)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

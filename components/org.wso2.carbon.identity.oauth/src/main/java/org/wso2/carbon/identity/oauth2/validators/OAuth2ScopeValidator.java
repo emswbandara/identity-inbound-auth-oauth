@@ -19,7 +19,10 @@
 package org.wso2.carbon.identity.oauth2.validators;
 
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.user.api.UserStoreException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +45,33 @@ public abstract class OAuth2ScopeValidator {
      * @throws IdentityOAuth2Exception
      */
     public abstract boolean validateScope(AccessTokenDO accessTokenDO, String resource) throws IdentityOAuth2Exception;
+
+    /**
+     * Method to validate scopes in the token request against the roles of user
+     *
+     * @param tokReqMsgCtx
+     * @return - true if the user has enough permission to generate tokens with requested scopes or
+     * no scopes are requested, otherwise false
+     * @throws IdentityOAuth2Exception
+     */
+    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx) throws
+            IdentityOAuth2Exception, UserStoreException {
+        return true;
+    }
+
+    /**
+     * Method to validate scopes in the authorization request against the roles of the user.
+     *
+     * @param authzReqMessageContext Authorization request
+     * @return - true if the user has enough permission to generate tokens with requested scopes or
+     * no scopes are requested, otherwise false
+     * @throws IdentityOAuth2Exception
+     */
+    public boolean validateScope(OAuthAuthzReqMessageContext authzReqMessageContext) throws
+            UserStoreException, IdentityOAuth2Exception {
+
+        return true;
+    }
 
     public Set<String> getScopesToSkip() {
         return scopesToSkip;
@@ -67,5 +97,15 @@ public abstract class OAuth2ScopeValidator {
      */
     public boolean canHandle(OAuth2TokenValidationMessageContext messageContext) {
         return true;
+    }
+
+    /**
+     * Method to get the name of the implemented scope validator name to display in the UI and save in the database.
+     * As default the class name is used.
+     *
+     * @return Name of the scope validator
+     */
+    public String getValidatorName() {
+        return this.getClass().getCanonicalName();
     }
 }

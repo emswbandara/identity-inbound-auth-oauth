@@ -18,12 +18,10 @@
 
 package org.wso2.carbon.identity.oauth2.listener;
 
-
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.stratos.common.beans.TenantInfoBean;
 import org.wso2.carbon.stratos.common.exception.StratosException;
 import org.wso2.carbon.stratos.common.listeners.TenantMgtListener;
-
 
 /**
  * This is an implementation of TenantMgtListener. This uses
@@ -33,9 +31,10 @@ public class TenantCreationEventListener implements TenantMgtListener {
 
     @Override
     public void onTenantCreate(TenantInfoBean tenantInfoBean) throws StratosException {
+
         int tenantId = tenantInfoBean.getTenantId();
         OAuth2Util.initiateOIDCScopes(tenantId);
-        OAuth2Util.initTokenExpiryTimesOfSps(tenantId);
+        OAuth2Util.initiateOAuthScopePermissionsBindings(tenantId);
     }
 
     @Override
@@ -75,6 +74,7 @@ public class TenantCreationEventListener implements TenantMgtListener {
 
     @Override
     public int getListenerOrder() {
+
         return 0;
     }
 

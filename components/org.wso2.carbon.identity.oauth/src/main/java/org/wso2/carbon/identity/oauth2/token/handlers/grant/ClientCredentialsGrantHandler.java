@@ -30,16 +30,13 @@ import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
  */
 public class ClientCredentialsGrantHandler extends AbstractAuthorizationGrantHandler {
 
-    private static Log log = LogFactory.getLog(ClientCredentialsGrantHandler.class);
+    private static final Log log = LogFactory.getLog(ClientCredentialsGrantHandler.class);
 
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
 
-        if (!super.validateGrant(tokReqMsgCtx)){
-            return false;
-        }
-
+        super.validateGrant(tokReqMsgCtx);
         // By this time, we have already validated client credentials.
         tokReqMsgCtx.setScope(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getScope());
         return true;

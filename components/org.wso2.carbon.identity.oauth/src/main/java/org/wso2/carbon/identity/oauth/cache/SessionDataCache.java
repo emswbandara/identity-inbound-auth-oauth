@@ -23,10 +23,10 @@ import org.wso2.carbon.identity.application.common.cache.BaseCache;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.utils.CarbonUtils;
 
-import javax.cache.Cache;
-
-// Cache used by Authorization endpoint. This class cannot be in oauth.endpoint component
-// since it needs to be visible to Hazelcast.
+/**
+ * Cache used by Authorization endpoint. This class cannot be in oauth.endpoint component
+ * since it needs to be visible to Hazelcast.
+ */
 public class SessionDataCache extends BaseCache<SessionDataCacheKey, SessionDataCacheEntry> {
 
     private static final String SESSION_DATA_CACHE_NAME = "OAuthSessionDataCache";
@@ -35,7 +35,7 @@ public class SessionDataCache extends BaseCache<SessionDataCacheKey, SessionData
     private boolean isTemporarySessionDataPersistEnabled = false;
 
     private SessionDataCache() {
-        super(SESSION_DATA_CACHE_NAME);
+        super(SESSION_DATA_CACHE_NAME, true);
         if (IdentityUtil.getProperty("JDBCPersistenceManager.SessionDataPersist.Temporary") != null) {
             isTemporarySessionDataPersistEnabled = Boolean.parseBoolean(
                     IdentityUtil.getProperty("JDBCPersistenceManager.SessionDataPersist.Temporary"));

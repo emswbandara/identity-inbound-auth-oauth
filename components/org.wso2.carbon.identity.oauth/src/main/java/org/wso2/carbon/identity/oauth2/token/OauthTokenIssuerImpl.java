@@ -24,10 +24,14 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 
+/**
+ * UUID based access token issuer builder.
+ */
 public class OauthTokenIssuerImpl implements OauthTokenIssuer {
 
     private OAuthIssuer oAuthIssuerImpl = OAuthServerConfiguration.getInstance()
             .getOAuthTokenGenerator();
+    private boolean persistAccessTokenAlias = true;
 
     public String accessToken(OAuthTokenReqMessageContext tokReqMsgCtx) throws OAuthSystemException {
         return oAuthIssuerImpl.accessToken();
@@ -49,4 +53,11 @@ public class OauthTokenIssuerImpl implements OauthTokenIssuer {
         return oAuthIssuerImpl.refreshToken();
     }
 
+    public void setPersistAccessTokenAlias(boolean persistAccessTokenAlias) {
+        this.persistAccessTokenAlias = persistAccessTokenAlias;
+    }
+
+    public boolean usePersistedAccessTokenAlias() {
+        return persistAccessTokenAlias;
+    }
 }

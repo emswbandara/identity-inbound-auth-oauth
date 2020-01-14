@@ -18,6 +18,9 @@
 
 package org.wso2.carbon.identity.oauth2.dto;
 
+/**
+ * OAuth 2 access token validation request DTO.
+ */
 public class OAuth2TokenValidationRequestDTO {
 
     private OAuth2AccessToken accessToken;
@@ -53,6 +56,9 @@ public class OAuth2TokenValidationRequestDTO {
         this.requiredClaimURIs = requiredClaimURIs;
     }
 
+    /**
+     * Token validation context parameters.
+     */
     public class TokenValidationContextParam {
 
         private String key;
@@ -76,11 +82,16 @@ public class OAuth2TokenValidationRequestDTO {
         }
     }
 
+    /**
+     * OAuth 2 access token.
+     */
     public class OAuth2AccessToken {
 
         private String tokenType;
 
         private String identifier;
+
+        private String issuer;
 
         public String getTokenType() {
             return tokenType;
@@ -98,5 +109,12 @@ public class OAuth2TokenValidationRequestDTO {
             this.identifier = identifier;
         }
 
+        public String getIssuer() {
+            return issuer;
+        }
+
+        public void setIssuer(String issuer) {
+            this.issuer = issuer;
+        }
     }
 }

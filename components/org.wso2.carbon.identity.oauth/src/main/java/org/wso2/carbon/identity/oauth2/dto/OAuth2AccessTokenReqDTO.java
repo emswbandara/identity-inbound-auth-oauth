@@ -18,8 +18,17 @@
 
 package org.wso2.carbon.identity.oauth2.dto;
 
+import org.wso2.carbon.identity.oauth2.bean.OAuthClientAuthnContext;
+import org.wso2.carbon.identity.oauth2.model.HttpRequestHeader;
 import org.wso2.carbon.identity.oauth2.model.RequestParameter;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * OAuth 2 access token request DTO.
+ */
 public class OAuth2AccessTokenReqDTO {
     private String clientId;
     private String clientSecret;
@@ -34,9 +43,12 @@ public class OAuth2AccessTokenReqDTO {
     private String clientAssertionType;
     private String clientAssertion;
     private String tenantDomain;
-    private String windows_token;
+    private String windowsToken;
     private String pkceCodeVerifier;
     private RequestParameter[] requestParameters;
+    private HttpRequestHeader[] httpRequestHeaders;
+    private List<String> authenticationMethodReferences = new ArrayList<>();
+    private OAuthClientAuthnContext oAuthClientAuthnContext;
 
     public String getClientId() {
         return clientId;
@@ -119,11 +131,11 @@ public class OAuth2AccessTokenReqDTO {
     }
 
     public String getWindowsToken() {
-        return windows_token;
+        return windowsToken;
     }
 
     public void setWindowsToken(String windowsToken) {
-        this.windows_token = windowsToken;
+        this.windowsToken = windowsToken;
     }
 
     public String getClientAssertionType() {
@@ -158,11 +170,35 @@ public class OAuth2AccessTokenReqDTO {
         this.requestParameters = requestParameters;
     }
 
+    public HttpRequestHeader[] getHttpRequestHeaders() {
+        return httpRequestHeaders;
+    }
+
+    public void setHttpRequestHeaders(HttpRequestHeader[] httpRequestHeaders) {
+        this.httpRequestHeaders = httpRequestHeaders;
+    }
+
     public String getPkceCodeVerifier() {
         return pkceCodeVerifier;
     }
 
     public void setPkceCodeVerifier(String pkceCodeVerifier) {
         this.pkceCodeVerifier = pkceCodeVerifier;
+    }
+
+    public void addAuthenticationMethodReference(String reference) {
+        authenticationMethodReferences.add(reference);
+    }
+
+    public List<String> getAuthenticationMethodReferences() {
+        return Collections.unmodifiableList(authenticationMethodReferences);
+    }
+
+    public OAuthClientAuthnContext getoAuthClientAuthnContext() {
+        return oAuthClientAuthnContext;
+    }
+
+    public void setoAuthClientAuthnContext(OAuthClientAuthnContext oAuthClientAuthnContext) {
+        this.oAuthClientAuthnContext = oAuthClientAuthnContext;
     }
 }

@@ -22,12 +22,12 @@ import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 
 /**
- * Builds custom claims for the {@code IDToken}
+ * Extension point to populate user claims to build the id_token/self contained JWT access token
  */
 public interface CustomClaimsCallbackHandler {
 
-    public void handleCustomClaims(JWTClaimsSet builder, OAuthTokenReqMessageContext request);
+    public JWTClaimsSet handleCustomClaims(JWTClaimsSet.Builder builder, OAuthTokenReqMessageContext request);
 
-    public void handleCustomClaims(JWTClaimsSet builder, OAuthAuthzReqMessageContext request);
+    public JWTClaimsSet handleCustomClaims(JWTClaimsSet.Builder builder, OAuthAuthzReqMessageContext request);
 
 }

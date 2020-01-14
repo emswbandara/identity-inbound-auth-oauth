@@ -22,24 +22,35 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.equinox.http.helper.ContextPathServletAdaptor;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.http.HttpService;
+import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
+import org.wso2.carbon.identity.event.handler.AbstractEventHandler;
+import org.wso2.carbon.identity.oauth.common.token.bindings.TokenBinderInfo;
+import org.wso2.carbon.identity.oauth2.token.bindings.TokenBinder;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionConstants;
+import org.wso2.carbon.identity.oidc.session.backchannellogout.ClaimProviderImpl;
+import org.wso2.carbon.identity.oidc.session.handler.OIDCLogoutEventHandler;
+import org.wso2.carbon.identity.oidc.session.handler.OIDCLogoutHandler;
 import org.wso2.carbon.identity.oidc.session.servlet.OIDCLogoutServlet;
 import org.wso2.carbon.identity.oidc.session.servlet.OIDCSessionIFrameServlet;
+import org.wso2.carbon.identity.openidconnect.ClaimProvider;
 import org.wso2.carbon.user.core.service.RealmService;
 
 import javax.servlet.Servlet;
 
 /**
- * @scr.component name="identity.oidc.session.component" immediate="true"
- * @scr.reference name="osgi.httpservice" interface="org.osgi.service.http.HttpService"
- * cardinality="1..1" policy="dynamic" bind="setHttpService"
- * unbind="unsetHttpService"
- * @scr.reference name="user.realmservice.default"
- * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
- * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
+ * OIDC session management component class.
  */
+@Component(
+        name = "identity.oidc.session.component",
+        immediate = true
+)
 public class OIDCSessionManagementComponent {
+
     private static final Log log = LogFactory.getLog(OIDCSessionManagementComponent.class);
 
     protected void activate(ComponentContext context) {
@@ -48,10 +59,10 @@ public class OIDCSessionManagementComponent {
 
         // Register Session IFrame Servlet
         Servlet sessionIFrameServlet = new ContextPathServletAdaptor(new OIDCSessionIFrameServlet(),
-                                                                     OIDCSessionConstants.OIDCEndpoints.OIDC_SESSION_IFRAME_ENDPOINT);
+                OIDCSessionConstants.OIDCEndpoints.OIDC_SESSION_IFRAME_ENDPOINT);
         try {
             httpService.registerServlet(OIDCSessionConstants.OIDCEndpoints.OIDC_SESSION_IFRAME_ENDPOINT,
-                                        sessionIFrameServlet, null, null);
+                    sessionIFrameServlet, null, null);
         } catch (Exception e) {
             String msg = "Error when registering OIDC Session IFrame Servlet via the HttpService.";
             log.error(msg, e);
@@ -59,10 +70,10 @@ public class OIDCSessionManagementComponent {
         }
 
         Servlet logoutServlet = new ContextPathServletAdaptor(new OIDCLogoutServlet(),
-                                                              OIDCSessionConstants.OIDCEndpoints.OIDC_LOGOUT_ENDPOINT);
+                OIDCSessionConstants.OIDCEndpoints.OIDC_LOGOUT_ENDPOINT);
         try {
             httpService.registerServlet(OIDCSessionConstants.OIDCEndpoints.OIDC_LOGOUT_ENDPOINT, logoutServlet, null,
-                                        null);
+                    null);
         } catch (Exception e) {
             String msg = "Error when registering OIDC Logout Servlet via the HttpService.";
             log.error(msg, e);
@@ -70,6 +81,28 @@ public class OIDCSessionManagementComponent {
         }
         if (log.isDebugEnabled()) {
             log.info("OIDC Session Management bundle is activated");
+        }
+
+        ClaimProviderImpl claimProviderImpl = new ClaimProviderImpl();
+        try {
+            context.getBundleContext().registerService(ClaimProvider.class.getName(), claimProviderImpl, null);
+        } catch (Exception e) {
+            String msg = "Error when registering ClaimProvider service";
+            log.error(msg, e);
+            throw new RuntimeException(msg, e);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("ClaimProvider bundle is activated");
+        }
+
+        try {
+            context.getBundleContext().registerService(AbstractEventHandler.class.getName(),
+                    new OIDCLogoutEventHandler(), null);
+        } catch (Exception e) {
+            String msg = "Error when registering OIDCLogoutEventHandler.";
+            log.error(msg, e);
+            throw new RuntimeException(msg, e);
         }
     }
 
@@ -80,6 +113,13 @@ public class OIDCSessionManagementComponent {
         }
     }
 
+    @Reference(
+            name = "osgi.http.service",
+            service = HttpService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetHttpService"
+    )
     protected void setHttpService(HttpService httpService) {
 
         if (log.isDebugEnabled()) {
@@ -95,10 +135,18 @@ public class OIDCSessionManagementComponent {
         }
         OIDCSessionManagementComponentServiceHolder.setHttpService(null);
     }
+
+    @Reference(
+            name = "realm.service",
+            service = RealmService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetRealmService"
+    )
     protected void setRealmService(RealmService realmService) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Setting the Realm Service");
+            log.debug("Setting the Realm Service.");
         }
         OIDCSessionManagementComponentServiceHolder.setRealmService(realmService);
     }
@@ -106,8 +154,79 @@ public class OIDCSessionManagementComponent {
     protected void unsetRealmService(RealmService realmService) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Unsetting the Realm Service");
+            log.debug("Unsetting the Realm Service.");
         }
         OIDCSessionManagementComponentServiceHolder.setRealmService(null);
+    }
+
+    @Reference(
+            name = "oidc.logout.handlers",
+            service = OIDCLogoutHandler.class,
+            cardinality = ReferenceCardinality.MULTIPLE,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unregisterOIDCLogoutHandler"
+    )
+    protected void registerOIDCLogoutHandler(OIDCLogoutHandler oidcLogoutHandler) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Registering OIDC Logout Handler: " + oidcLogoutHandler.getClass().getName());
+        }
+        OIDCSessionManagementComponentServiceHolder.addPostLogoutHandler(oidcLogoutHandler);
+    }
+
+    protected void unregisterOIDCLogoutHandler(OIDCLogoutHandler oidcLogoutHandler) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Un-registering OIDC Logout Handler: " + oidcLogoutHandler.getClass().getName());
+        }
+        OIDCSessionManagementComponentServiceHolder.removePostLogoutHandler(oidcLogoutHandler);
+    }
+
+    @Reference(
+            name = "identity.application.management.component",
+            service = ApplicationManagementService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetApplicationMgtService"
+    )
+    protected void setApplicationMgtService(ApplicationManagementService applicationMgtService) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("ApplicationManagementService set in OIDC session management bundle");
+        }
+        OIDCSessionManagementComponentServiceHolder.setApplicationMgtService(applicationMgtService);
+    }
+
+    protected void unsetApplicationMgtService(ApplicationManagementService applicationMgtService) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("ApplicationManagementService unset in OIDC session management bundle");
+        }
+        OIDCSessionManagementComponentServiceHolder.setApplicationMgtService(null);
+    }
+
+    @Reference(name = "token.binding.service",
+            service = TokenBinderInfo.class,
+            cardinality = ReferenceCardinality.MULTIPLE,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetTokenBinderInfo")
+    protected void setTokenBinderInfo(TokenBinderInfo tokenBinderInfo) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Setting the token binder for: " + tokenBinderInfo.getBindingType());
+        }
+        if (tokenBinderInfo instanceof TokenBinder) {
+            OIDCSessionManagementComponentServiceHolder.getInstance().addTokenBinder((TokenBinder) tokenBinderInfo);
+        }
+    }
+
+    protected void unsetTokenBinderInfo(TokenBinderInfo tokenBinderInfo) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Un-setting the token binder for: " + tokenBinderInfo.getBindingType());
+        }
+        if (tokenBinderInfo instanceof TokenBinder) {
+            OIDCSessionManagementComponentServiceHolder.getInstance().removeTokenBinder((TokenBinder) tokenBinderInfo);
+        }
     }
 }

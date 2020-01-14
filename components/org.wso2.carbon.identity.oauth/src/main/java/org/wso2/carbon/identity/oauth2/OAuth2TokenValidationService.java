@@ -33,12 +33,14 @@ import org.wso2.carbon.identity.oauth2.validators.TokenValidationHandler;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.triggerOnIntrospectionExceptionListeners;
+
 /**
  * This is the SOAP version of the OAuth validation service which will be used by the resource server.
  */
 public class OAuth2TokenValidationService extends AbstractAdmin {
 
-    private static Log log = LogFactory.getLog(OAuth2TokenValidationService.class);
+    private static final Log log = LogFactory.getLog(OAuth2TokenValidationService.class);
 
     /**
      * @param validationReqDTO
@@ -61,10 +63,9 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
             responseDTO = validationHandler.validate(validationReqDTO);
         } catch (IdentityOAuth2Exception e) {
             log.error("Error occurred while validating the OAuth2 access token", e);
-            OAuth2TokenValidationResponseDTO errRespDTO = new OAuth2TokenValidationResponseDTO();
-            errRespDTO.setValid(false);
-            errRespDTO.setErrorMsg("Server error occurred while validating the OAuth2 access token");
-            return errRespDTO;
+            responseDTO = new OAuth2TokenValidationResponseDTO();
+            responseDTO.setValid(false);
+            responseDTO.setErrorMsg("Server error occurred while validating the OAuth2 access token");
         }
         //trigger post listeners
         triggerPostValidationListeners(validationReqDTO, responseDTO);
@@ -105,12 +106,20 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
         OAuth2IntrospectionResponseDTO oAuth2IntrospectionResponseDTO = null;
         try {
             triggerPreValidationListeners(validationReq);
+        } catch (IdentityOAuth2Exception e) {
+            OAuth2IntrospectionResponseDTO errRespDTO = new OAuth2IntrospectionResponseDTO();
+            errRespDTO.setActive(false);
+            errRespDTO.setError(e.getMessage());
+            triggerOnIntrospectionExceptionListeners(validationReq, errRespDTO);
+            return errRespDTO;
+        }
+        try {
             oAuth2IntrospectionResponseDTO = validationHandler.buildIntrospectionResponse(validationReq);
         } catch (IdentityOAuth2Exception e) {
             log.error("Error occurred while building the introspection response", e);
-            OAuth2IntrospectionResponseDTO response = new OAuth2IntrospectionResponseDTO();
-            response.setActive(false);
-            response.setError(e.getMessage());
+            oAuth2IntrospectionResponseDTO = new OAuth2IntrospectionResponseDTO();
+            oAuth2IntrospectionResponseDTO.setActive(false);
+            oAuth2IntrospectionResponseDTO.setError("Server error occurred while building the introspection response");
         }
         triggerPostIntrospectionValidationListeners(validationReq, oAuth2IntrospectionResponseDTO,
                 oAuth2IntrospectionResponseDTO.getProperties());

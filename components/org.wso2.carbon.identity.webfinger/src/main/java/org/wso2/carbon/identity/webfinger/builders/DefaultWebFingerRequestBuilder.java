@@ -34,6 +34,7 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.util.Collections;
 import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -70,6 +71,10 @@ public class DefaultWebFingerRequestBuilder implements WebFingerRequestBuilder {
             if (WebFingerConstants.ACCT_SCHEME.equals(resourceURI.getScheme())) {
                 //acct scheme
                 userInfo = resourceURI.getSchemeSpecificPart();
+                if (!userInfo.contains("@")) {
+                    throw new WebFingerEndpointException(WebFingerConstants.ERROR_CODE_INVALID_REQUEST,
+                            "Invalid host value.");
+                }
                 userInfo = userInfo.substring(0, userInfo.lastIndexOf('@'));
             } else {
                 //https scheme

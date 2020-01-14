@@ -22,6 +22,9 @@ package org.wso2.carbon.identity.oauth2.token;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 
+/**
+ * OAuth 2 access token issuer.
+ */
 public interface OauthTokenIssuer {
 
     String accessToken(OAuthTokenReqMessageContext tokReqMsgCtx) throws OAuthSystemException;
@@ -34,4 +37,53 @@ public interface OauthTokenIssuer {
 
     String refreshToken(OAuthAuthzReqMessageContext oauthAuthzMsgCtx) throws OAuthSystemException;
 
+    /**
+     * This is used to generate a hash of the access token. Eg. when JWTTokenIssuer is used, use JWTID as the hash
+     * @param accessToken Access Token
+     * @return hash of the access token
+     * @throws OAuthSystemException {@link OAuthSystemException} OAuth System Exception.
+     */
+    default String getAccessTokenHash(String accessToken) throws OAuthSystemException {
+        return accessToken;
+    }
+
+    /**
+     * Renew access token per request
+     * @return true if new access token per each request
+     */
+    default boolean renewAccessTokenPerRequest() {
+        return false;
+    }
+
+    /**
+     * Renew access token per request.
+     * @param oauthAuthzMsgCtx Message context of the token request.
+     * @return true if new access token per each request.
+     */
+    default boolean renewAccessTokenPerRequest(OAuthAuthzReqMessageContext oauthAuthzMsgCtx) {
+        return renewAccessTokenPerRequest();
+    }
+
+    /**
+     * Renew access token per request by token message context.
+     *
+     * @return true if new access token per each request
+     */
+    default boolean renewAccessTokenPerRequest(OAuthTokenReqMessageContext tokReqMsgCtx) {
+        return false;
+    }
+
+    /**
+     * Set true if the access token alias is used to stored in the database instead of access token.
+     * @param persistAccessTokenAlias access token alias
+     */
+    void setPersistAccessTokenAlias(boolean persistAccessTokenAlias);
+
+    /**
+     * Gets property value whether access token alias is stored in the database instead of access token
+     * @return true if access token alias is stored in the database instead of access token
+     */
+    default boolean usePersistedAccessTokenAlias() {
+        return true;
+    }
 }

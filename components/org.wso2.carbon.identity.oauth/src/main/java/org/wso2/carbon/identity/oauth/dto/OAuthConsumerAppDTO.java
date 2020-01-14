@@ -18,6 +18,9 @@
 
 package org.wso2.carbon.identity.oauth.dto;
 
+/**
+ * OAuth consumer app dto.
+ */
 public class OAuthConsumerAppDTO {
 
     private String oauthConsumerKey;
@@ -27,9 +30,50 @@ public class OAuthConsumerAppDTO {
     private String oauthVersion;
     private String username;
     private String grantTypes = "";
+    private String[] scopeValidators = null;
     private boolean pkceSupportPlain;
     private boolean pkceMandatory;
     private String state;
+    private long userAccessTokenExpiryTime;
+    private long applicationAccessTokenExpiryTime;
+    private long refreshTokenExpiryTime;
+    private String[] audiences;
+    private boolean bypassClientCredentials;
+    private String renewRefreshTokenEnabled;
+    // OIDC related properties
+    private boolean isRequestObjectSignatureValidationEnabled;
+    private boolean isIdTokenEncryptionEnabled;
+    private String idTokenEncryptionAlgorithm;
+    private String idTokenEncryptionMethod;
+    private String backChannelLogoutUrl;
+    private String frontchannelLogoutUrl;
+    private long idTokenExpiryTime;
+    private String tokenType;
+    private String tokenBindingType;
+
+    public long getUserAccessTokenExpiryTime() {
+        return userAccessTokenExpiryTime;
+    }
+
+    public void setUserAccessTokenExpiryTime(long userAccessTokenExpiryTime) {
+        this.userAccessTokenExpiryTime = userAccessTokenExpiryTime;
+    }
+
+    public long getApplicationAccessTokenExpiryTime() {
+        return applicationAccessTokenExpiryTime;
+    }
+
+    public void setApplicationAccessTokenExpiryTime(long applicationAccessTokenExpiryTime) {
+        this.applicationAccessTokenExpiryTime = applicationAccessTokenExpiryTime;
+    }
+
+    public long getRefreshTokenExpiryTime() {
+        return refreshTokenExpiryTime;
+    }
+
+    public void setRefreshTokenExpiryTime(long refreshTokenExpiryTime) {
+        this.refreshTokenExpiryTime = refreshTokenExpiryTime;
+    }
 
     public String getApplicationName() {
         return applicationName;
@@ -84,9 +128,18 @@ public class OAuthConsumerAppDTO {
     }
 
     public void setGrantTypes(String grantTypes) {
-        if(grantTypes != null) {
+
+        if (grantTypes != null) {
             this.grantTypes = grantTypes;
         }
+    }
+
+    public String[] getScopeValidators() {
+        return scopeValidators;
+    }
+
+    public void setScopeValidators(String[] scopeValidators) {
+        this.scopeValidators = scopeValidators;
     }
 
     public boolean getPkceSupportPlain() {
@@ -111,6 +164,118 @@ public class OAuthConsumerAppDTO {
 
     public String getState() {
         return state;
+    }
+
+    public String[] getAudiences() {
+        return audiences;
+    }
+
+    public void setAudiences(String[] audiences) {
+
+        if (audiences != null) {
+            this.audiences = audiences;
+        }
+    }
+
+    public boolean isRequestObjectSignatureValidationEnabled() {
+        return isRequestObjectSignatureValidationEnabled;
+    }
+
+    public void setRequestObjectSignatureValidationEnabled(boolean requestObjectSignatureValidationEnabled) {
+        this.isRequestObjectSignatureValidationEnabled = requestObjectSignatureValidationEnabled;
+    }
+
+    public boolean isIdTokenEncryptionEnabled() {
+        return isIdTokenEncryptionEnabled;
+    }
+
+    public String getIdTokenEncryptionAlgorithm() {
+        return idTokenEncryptionAlgorithm;
+    }
+
+    public String getIdTokenEncryptionMethod() {
+        return idTokenEncryptionMethod;
+    }
+
+    public void setIdTokenEncryptionAlgorithm(String idTokenEncryptionAlgorithm) {
+        this.idTokenEncryptionAlgorithm = idTokenEncryptionAlgorithm;
+    }
+
+    public void setIdTokenEncryptionMethod(String idTokenEncryptionMethod) {
+        this.idTokenEncryptionMethod = idTokenEncryptionMethod;
+    }
+
+    public void setIdTokenEncryptionEnabled(boolean idTokenEncryptionEnabled) {
+        this.isIdTokenEncryptionEnabled = idTokenEncryptionEnabled;
+    }
+
+    public void setBackChannelLogoutUrl(String backChannelLogoutUrl) {
+        this.backChannelLogoutUrl = backChannelLogoutUrl;
+    }
+
+    public String getBackChannelLogoutUrl() {
+        return backChannelLogoutUrl;
+    }
+
+    public String getFrontchannelLogoutUrl() {
+        return frontchannelLogoutUrl;
+    }
+
+    public void setFrontchannelLogoutUrl(String frontchannelLogoutUrl) {
+        this.frontchannelLogoutUrl = frontchannelLogoutUrl;
+    }
+
+    public long getIdTokenExpiryTime() {
+
+        return idTokenExpiryTime;
+    }
+
+    public void setIdTokenExpiryTime(long idTokenExpiryTime) {
+        this.idTokenExpiryTime = idTokenExpiryTime;
+    }
+
+    public String getTokenType() {
+        return tokenType;
+    }
+
+    public void setTokenType(String tokenType) {
+        this.tokenType = tokenType;
+    }
+
+    public boolean isBypassClientCredentials() {
+        return bypassClientCredentials;
+    }
+
+    /**
+     * This method is deprecated. Use the 'isBypassClientCredentials' method instead.
+     */
+    @Deprecated
+    public boolean getBypassClientCredentials() { 
+        return bypassClientCredentials;
+    }
+
+    public void setBypassClientCredentials(boolean isPublicClient) {
+        this.bypassClientCredentials = isPublicClient;
+    }
+
+    public void setRenewRefreshTokenEnabled(String renewRefreshTokenEnabled) {
+
+        this.renewRefreshTokenEnabled = renewRefreshTokenEnabled;
+    }
+
+    public String getRenewRefreshTokenEnabled() {
+
+        return renewRefreshTokenEnabled;
+    }
+
+    public String getTokenBindingType() {
+
+        return tokenBindingType;
+    }
+
+    public void setTokenBindingType(String tokenBindingType) {
+
+        this.tokenBindingType = tokenBindingType;
     }
 }
 

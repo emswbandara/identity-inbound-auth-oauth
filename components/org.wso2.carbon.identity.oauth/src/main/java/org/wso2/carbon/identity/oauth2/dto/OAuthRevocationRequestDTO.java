@@ -18,6 +18,13 @@
 
 package org.wso2.carbon.identity.oauth2.dto;
 
+import org.wso2.carbon.identity.oauth2.bean.OAuthClientAuthnContext;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * OAuth token revocation request dto.
+ */
 public class OAuthRevocationRequestDTO {
 
     private String token;
@@ -28,7 +35,11 @@ public class OAuthRevocationRequestDTO {
 
     private String authzUser;
 
-    private String token_type;
+    private String tokenType;
+
+    private OAuthClientAuthnContext oAuthClientAuthnContext;
+
+    private HttpServletRequest request;
 
     public String getToken() {
         return token;
@@ -62,12 +73,39 @@ public class OAuthRevocationRequestDTO {
         this.authzUser = authzUser;
     }
 
+    @Deprecated
     public String getToken_type() {
-        return token_type;
+        return getTokenType();
     }
 
-    public void setToken_type(String token_type) {
-        this.token_type = token_type;
+    @Deprecated
+    public void setToken_type(String tokenType) {
+        setTokenType(tokenType);
     }
 
+    public void setTokenType(String tokenType) {
+        this.tokenType = tokenType;
+    }
+
+    public String getTokenType() {
+        return tokenType;
+    }
+
+    public OAuthClientAuthnContext getoAuthClientAuthnContext() {
+        return oAuthClientAuthnContext;
+    }
+
+    public void setOauthClientAuthnContext(OAuthClientAuthnContext oAuthClientAuthnContext) {
+        this.oAuthClientAuthnContext = oAuthClientAuthnContext;
+    }
+
+    public HttpServletRequest getRequest() {
+
+        return request;
+    }
+
+    public void setRequest(HttpServletRequest request) {
+
+        this.request = request;
+    }
 }

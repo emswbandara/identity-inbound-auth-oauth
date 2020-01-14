@@ -22,8 +22,10 @@ package org.wso2.carbon.identity.discovery.builders;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.base.ServerConfigurationException;
+import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataException;
 import org.wso2.carbon.identity.claim.metadata.mgt.model.ExternalClaim;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.discovery.OIDCDiscoveryEndPointException;
 import org.wso2.carbon.identity.discovery.OIDProviderConfigResponse;
 import org.wso2.carbon.identity.discovery.OIDProviderRequest;
@@ -36,6 +38,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Set;
 
+import static org.wso2.carbon.identity.discovery.DiscoveryUtil.isUseEntityIdAsIssuerInOidcDiscovery;
+
 /**
  * ProviderConfigBuilder builds the OIDProviderConfigResponse
  * giving the correct OprnIDConnect settings.
@@ -43,13 +47,21 @@ import java.util.Set;
  */
 public class ProviderConfigBuilder {
 
-    private static Log log = LogFactory.getLog(ProviderConfigBuilder.class);
+    private static final Log log = LogFactory.getLog(ProviderConfigBuilder.class);
     private static final String OIDC_CLAIM_DIALECT = "http://wso2.org/oidc/claim";
 
     public OIDProviderConfigResponse buildOIDProviderConfig(OIDProviderRequest request) throws
             OIDCDiscoveryEndPointException, ServerConfigurationException {
         OIDProviderConfigResponse providerConfig = new OIDProviderConfigResponse();
-        providerConfig.setIssuer(OAuth2Util.getIDTokenIssuer());
+        if (isUseEntityIdAsIssuerInOidcDiscovery()) {
+            try {
+                providerConfig.setIssuer(OAuth2Util.getIdTokenIssuer(request.getTenantDomain()));
+            } catch (IdentityOAuth2Exception e) {
+                throw new ServerConfigurationException("Error while retrieving OIDC Id token issue", e);
+            }
+        } else {
+            providerConfig.setIssuer(OAuth2Util.getIDTokenIssuer());
+        }
         providerConfig.setAuthorizationEndpoint(OAuth2Util.OAuthURL.getOAuth2AuthzEPUrl());
         providerConfig.setTokenEndpoint(OAuth2Util.OAuthURL.getOAuth2TokenEPUrl());
         providerConfig.setUserinfoEndpoint(OAuth2Util.OAuthURL.getOAuth2UserInfoEPUrl());
@@ -76,8 +88,9 @@ public class ProviderConfigBuilder {
             throw new ServerConfigurationException("Error while retrieving OIDC claim dialect", e);
         }
         try {
-            providerConfig.setIdTokenSigningAlgValuesSupported(new String[]{OAuth2Util.mapSignatureAlgorithm
-                    (OAuthServerConfiguration.getInstance().getIdTokenSignatureAlgorithm())});
+            providerConfig.setIdTokenSigningAlgValuesSupported(new String[]{
+                OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm
+                        (OAuthServerConfiguration.getInstance().getIdTokenSignatureAlgorithm()).getName()});
         } catch (IdentityOAuth2Exception e) {
             throw new ServerConfigurationException("Unsupported signature algorithm configured.", e);
         }
@@ -87,6 +100,31 @@ public class ProviderConfigBuilder {
                 String[supportedResponseTypeNames.size()]));
 
         providerConfig.setSubjectTypesSupported(new String[]{"pairwise"});
+
+        providerConfig.setCheckSessionIframe(IdentityUtil.getProperty(
+                IdentityConstants.OAuth.OIDC_CHECK_SESSION_EP_URL));
+        providerConfig.setEndSessionEndpoint(IdentityUtil.getProperty(
+                IdentityConstants.OAuth.OIDC_LOGOUT_EP_URL));
+
+        try {
+            providerConfig.setUserinfoSigningAlgValuesSupported(new String[] {
+                    OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(
+                            OAuthServerConfiguration.getInstance().getUserInfoJWTSignatureAlgorithm()).getName()
+            });
+        } catch (IdentityOAuth2Exception e) {
+            throw new ServerConfigurationException("Unsupported signature algorithm configured.", e);
+        }
+        providerConfig.setTokenEndpointAuthMethodsSupported(
+                OAuth2Util.getSupportedClientAuthenticationMethods().stream().toArray(String[]::new));
+        providerConfig.setGrantTypesSupported(OAuth2Util.getSupportedGrantTypes().stream().toArray(String[]::new));
+        providerConfig.setRequestParameterSupported(Boolean.valueOf(OAuth2Util.isRequestParameterSupported()));
+        providerConfig.setClaimsParameterSupported(Boolean.valueOf(OAuth2Util.isClaimsParameterSupported()));
+        providerConfig.setRequestObjectSigningAlgValuesSupported(
+                OAuth2Util.getRequestObjectSigningAlgValuesSupported().stream().toArray(String[]::new));
+
+        providerConfig.setBackchannelLogoutSupported(Boolean.TRUE);
+        providerConfig.setBackchannelLogoutSessionSupported(Boolean.TRUE);
+
         return providerConfig;
     }
 }

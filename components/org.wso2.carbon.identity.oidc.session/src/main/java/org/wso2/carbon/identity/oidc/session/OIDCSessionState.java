@@ -33,6 +33,7 @@ public class OIDCSessionState implements Serializable {
     private Set<String> sessionParticipants = new HashSet<>();
     private boolean isAuthenticated;
     private boolean addSessionState;
+    private String sidClaim;
 
     /**
      * Returns authenticated user identifier
@@ -40,6 +41,7 @@ public class OIDCSessionState implements Serializable {
      * @return authenticated user
      */
     public String getAuthenticatedUser() {
+
         return authenticatedUser;
     }
 
@@ -49,6 +51,7 @@ public class OIDCSessionState implements Serializable {
      * @param authenticatedUser
      */
     public void setAuthenticatedUser(String authenticatedUser) {
+
         this.authenticatedUser = authenticatedUser;
     }
 
@@ -58,6 +61,7 @@ public class OIDCSessionState implements Serializable {
      * @return a set of client ids
      */
     public Set<String> getSessionParticipants() {
+
         return sessionParticipants;
     }
 
@@ -67,6 +71,7 @@ public class OIDCSessionState implements Serializable {
      * @param sessionParticipants
      */
     public void setSessionParticipants(Set<String> sessionParticipants) {
+
         this.sessionParticipants = sessionParticipants;
     }
 
@@ -77,6 +82,7 @@ public class OIDCSessionState implements Serializable {
      * @return true if successfully added and false if not added and is being duplicated
      */
     public boolean addSessionParticipant(String clientId) {
+
         return sessionParticipants.add(clientId);
     }
 
@@ -86,6 +92,7 @@ public class OIDCSessionState implements Serializable {
      * @return authenticated flag
      */
     public boolean isAuthenticated() {
+
         return isAuthenticated;
     }
 
@@ -95,6 +102,7 @@ public class OIDCSessionState implements Serializable {
      * @param isAuthenticated
      */
     public void setAuthenticated(boolean isAuthenticated) {
+
         this.isAuthenticated = isAuthenticated;
     }
 
@@ -104,15 +112,38 @@ public class OIDCSessionState implements Serializable {
      * @return add session state flag
      */
     public boolean isAddSessionState() {
+
         return addSessionState;
     }
 
     /**
-     * Sets add session state flag
+     * Sets add session state flag. When this flag is set session_state parameter is returned in the OIDC
+     * authentication response.
      *
      * @param addSessionState
      */
     public void setAddSessionState(boolean addSessionState) {
+
         this.addSessionState = addSessionState;
+    }
+
+    /**
+     * Returns sid claim.
+     *
+     * @return sid claim
+     */
+    public String getSidClaim() {
+
+        return sidClaim;
+    }
+
+    /**
+     * Sets sid claim.
+     *
+     * @param sidClaim
+     */
+    public void setSidClaim(String sidClaim) {
+
+        this.sidClaim = sidClaim;
     }
 }

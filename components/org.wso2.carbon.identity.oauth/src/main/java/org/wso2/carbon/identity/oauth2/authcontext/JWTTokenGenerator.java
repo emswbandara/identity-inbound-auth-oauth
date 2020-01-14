@@ -1,4 +1,4 @@
-/*
+    /*
  * Copyright (c) 2012, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
@@ -20,10 +20,8 @@ package org.wso2.carbon.identity.oauth2.authcontext;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
@@ -69,10 +67,10 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -119,13 +117,11 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
 
     private boolean useMultiValueSeparator = true;
 
-
     //constructor for testing purposes
     public JWTTokenGenerator(boolean includeClaims, boolean enableSigning) {
         this.includeClaims = includeClaims;
         this.enableSigning = enableSigning;
         signatureAlgorithm = new JWSAlgorithm(JWSAlgorithm.NONE.getName());
-
     }
 
     /**
@@ -136,24 +132,26 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
      */
     @Override
     public void init() throws IdentityOAuth2Exception {
+
         if (includeClaims && enableSigning) {
             String claimsRetrieverImplClass = OAuthServerConfiguration.getInstance().getClaimsRetrieverImplClass();
-            String sigAlg =  OAuthServerConfiguration.getInstance().getSignatureAlgorithm();
-            if(sigAlg != null && !sigAlg.trim().isEmpty()){
-                signatureAlgorithm = mapSignatureAlgorithm(sigAlg);
+            String sigAlg = OAuthServerConfiguration.getInstance().getSignatureAlgorithm();
+            if (sigAlg != null && !sigAlg.trim().isEmpty()) {
+                signatureAlgorithm = OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(sigAlg);
             }
-            useMultiValueSeparator = OAuthServerConfiguration.getInstance().isUseMultiValueSeparatorForAuthContextToken();
-            if(claimsRetrieverImplClass != null){
-                try{
-                    claimsRetriever = (ClaimsRetriever)Class.forName(claimsRetrieverImplClass).newInstance();
+            useMultiValueSeparator =
+                    OAuthServerConfiguration.getInstance().isUseMultiValueSeparatorForAuthContextToken();
+            if (claimsRetrieverImplClass != null) {
+                try {
+                    claimsRetriever = (ClaimsRetriever) Class.forName(claimsRetrieverImplClass).newInstance();
                     claimsRetriever.init();
-                } catch (ClassNotFoundException e){
+                } catch (ClassNotFoundException e) {
                     log.error("Cannot find class: " + claimsRetrieverImplClass, e);
                 } catch (InstantiationException e) {
                     log.error("Error instantiating " + claimsRetrieverImplClass, e);
                 } catch (IllegalAccessException e) {
                     log.error("Illegal access to " + claimsRetrieverImplClass, e);
-                } catch (IdentityOAuth2Exception e){
+                } catch (IdentityOAuth2Exception e) {
                     log.error("Error while initializing " + claimsRetrieverImplClass, e);
                 }
             }
@@ -163,15 +161,15 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
     /**
      * Method that generates the JWT.
      *
-     * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
     @Override
     public void generateToken(OAuth2TokenValidationMessageContext messageContext) throws IdentityOAuth2Exception {
 
-        AccessTokenDO accessTokenDO = (AccessTokenDO)messageContext.getProperty("AccessTokenDO");
+        AccessTokenDO accessTokenDO = (AccessTokenDO) messageContext.getProperty("AccessTokenDO");
         String clientId = accessTokenDO.getConsumerKey();
         long issuedTime = accessTokenDO.getIssuedTime().getTime();
+        long validityPeriodInMillis = accessTokenDO.getValidityPeriodInMillis();
         String authzUser = messageContext.getResponseDTO().getAuthorizedUser();
         int tenantId = accessTokenDO.getTenantID();
         String tenantDomain = OAuth2Util.getTenantDomain(tenantId);
@@ -181,8 +179,9 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
         RealmService realmService = OAuthComponentServiceHolder.getInstance().getRealmService();
         tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(authzUser);
 
-        if (realmService != null && tenantId != MultitenantConstants.INVALID_TENANT_ID && !accessTokenDO.getAuthzUser()
-                .isFederatedUser()) {
+        if (realmService != null && tenantId != MultitenantConstants.INVALID_TENANT_ID && !(accessTokenDO
+                .getAuthzUser().isFederatedUser() && !OAuthServerConfiguration.getInstance()
+                .isMapFederatedUsersToLocal())) {
             try {
                 UserRealm userRealm = realmService.getTenantUserRealm(tenantId);
                 if (userRealm != null) {
@@ -212,23 +211,27 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
 
         //generating expiring timestamp
         long currentTime = Calendar.getInstance().getTimeInMillis();
-        long expireIn = currentTime + 1000 * 60 * getTTL();
+        // Expiry time of the JWT.
+        long expireIn = validityPeriodInMillis + issuedTime;
 
         // Prepare JWT with claims set
-        JWTClaimsSet claimsSet = new JWTClaimsSet();
-        claimsSet.setIssuer(API_GATEWAY_ID);
-        claimsSet.setSubject(authzUser);
-        claimsSet.setIssueTime(new Date(issuedTime));
-        claimsSet.setExpirationTime(new Date(expireIn));
-        claimsSet.setClaim(API_GATEWAY_ID+"/subscriber",subscriber);
-        claimsSet.setClaim(API_GATEWAY_ID+"/applicationname",applicationName);
-        claimsSet.setClaim(API_GATEWAY_ID+"/enduser",authzUser);
+        JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder();
+        claimsSetBuilder.issuer(API_GATEWAY_ID);
+        claimsSetBuilder.subject(authzUser);
+        claimsSetBuilder.issueTime(new Date(currentTime));
+        claimsSetBuilder.expirationTime(new Date(expireIn));
+        // Nbf is set to the issue time of the JWT and not the issue time of the access token.
+        claimsSetBuilder.notBeforeTime(new Date(currentTime));
+        claimsSetBuilder.claim(API_GATEWAY_ID + "/subscriber", subscriber);
+        claimsSetBuilder.claim(API_GATEWAY_ID + "/applicationname", applicationName);
+        claimsSetBuilder.claim(API_GATEWAY_ID + "/enduser", authzUser);
+        //TODO: check setting audience
 
-        if(claimsRetriever != null){
+        if (claimsRetriever != null) {
 
             //check in local cache
             String[] requestedClaims = messageContext.getRequestDTO().getRequiredClaimURIs();
-            if(requestedClaims == null && isExistingUser)  {
+            if (requestedClaims == null && isExistingUser) {
                 // if no claims were requested, return all
                 requestedClaims = claimsRetriever.getDefaultClaims(authzUser);
             }
@@ -246,7 +249,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
                 result = claimsLocalCache.getValueFromCache(cacheKey);
             }
 
-            SortedMap<String,String> claimValues = null;
+            SortedMap<String, String> claimValues = null;
             if (result != null) {
                 claimValues = result.getClaimValues();
             } else if (isExistingUser) {
@@ -258,19 +261,17 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
                         new ClaimMetaDataCacheEntry(cacheKey));
             }
 
-            if(isExistingUser) {
+            if (isExistingUser) {
                 String claimSeparator = getMultiAttributeSeparator(authzUser, tenantId);
                 if (StringUtils.isNotBlank(claimSeparator)) {
                     userAttributeSeparator = claimSeparator;
                 }
             }
 
-            if(claimValues != null) {
-                Iterator<String> it = new TreeSet(claimValues.keySet()).iterator();
-                while (it.hasNext()) {
-                    String claimURI = it.next();
+            if (claimValues != null) {
+                for (String claimURI : new TreeSet<>(claimValues.keySet())) {
                     String claimVal = claimValues.get(claimURI);
-                    List<String> claimList = new ArrayList<String>();
+                    List<String> claimList = new ArrayList<>();
                     if (useMultiValueSeparator && userAttributeSeparator != null &&
                             claimVal.contains(userAttributeSeparator)) {
                         StringTokenizer st = new StringTokenizer(claimVal, userAttributeSeparator);
@@ -280,20 +281,18 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
                                 claimList.add(attValue);
                             }
                         }
-                        claimsSet.setClaim(claimURI, claimList.toArray(new String[claimList.size()]));
+                        claimsSetBuilder.claim(claimURI, claimList.toArray(new String[claimList.size()]));
                     } else {
-                        claimsSet.setClaim(claimURI, claimVal);
+                        claimsSetBuilder.claim(claimURI, claimVal);
                     }
                 }
             }
         }
 
+        JWTClaimsSet claimsSet = claimsSetBuilder.build();
         JWT jwt = null;
-        if(!JWSAlgorithm.NONE.equals(signatureAlgorithm)){
-            JWSHeader header = new JWSHeader(JWSAlgorithm.RS256);
-            header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
-            jwt = new SignedJWT(header, claimsSet);
-            jwt = signJWT((SignedJWT)jwt, tenantDomain, tenantId);
+        if (!JWSAlgorithm.NONE.equals(signatureAlgorithm)) {
+            jwt = OAuth2Util.signJWT(claimsSet, signatureAlgorithm, tenantDomain);
         } else {
             jwt = new PlainJWT(claimsSet);
         }
@@ -316,10 +315,10 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
      * @return
      * @throws IdentityOAuth2Exception
      */
+    @Deprecated
     protected SignedJWT signJWTWithRSA(SignedJWT signedJWT, JWSAlgorithm jwsAlgorithm, String tenantDomain,
                                        int tenantId)
             throws IdentityOAuth2Exception {
-
         try {
             Key privateKey = getPrivateKey(tenantDomain, tenantId);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
@@ -343,9 +342,9 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
      * @return
      * @throws IdentityOAuth2Exception
      */
+    @Deprecated
     protected JWT signJWT(SignedJWT signedJWT, String tenantDomain, int tenantId)
             throws IdentityOAuth2Exception {
-
         if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
                 JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
             return signJWTWithRSA(signedJWT, signatureAlgorithm, tenantDomain, tenantId);
@@ -374,31 +373,10 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
      * @return
      * @throws IdentityOAuth2Exception
      */
+    @Deprecated
     protected JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm)
             throws IdentityOAuth2Exception {
-        if ("SHA256withRSA".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS256;
-        } else if ("SHA384withRSA".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS384;
-        } else if ("SHA512withRSA".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS512;
-        } else if ("SHA256withHMAC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS256;
-        } else if ("SHA384withHMAC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS384;
-        } else if ("SHA512withHMAC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS512;
-        } else if ("SHA256withEC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES256;
-        } else if ("SHA384withEC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES384;
-        } else if ("SHA512withEC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES512;
-        } else if(NONE.equals(signatureAlgorithm)){
-            return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
-        }
-        log.error("Unsupported Signature Algorithm in identity.xml");
-        throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
+        return OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(signatureAlgorithm);
     }
 
     private long getTTL() {
@@ -469,7 +447,8 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             try {
                 IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
             } catch (IdentityException e) {
-                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain, e);
+                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain,
+                        e);
             }
 
             // get tenant's key store manager
@@ -515,7 +494,8 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             try {
                 IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
             } catch (IdentityException e) {
-                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain, e);
+                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain,
+                        e);
             }
 
             // get tenant's key store manager
@@ -577,7 +557,8 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             }
 
             if (realmConfiguration != null) {
-                claimSeparator = realmConfiguration.getUserStoreProperty(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
+                claimSeparator =
+                        realmConfiguration.getUserStoreProperty(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
                 if (claimSeparator != null && !claimSeparator.trim().isEmpty()) {
                     return claimSeparator;
                 }
@@ -587,5 +568,9 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
                       "returned", e);
         }
         return null;
+    }
+
+    private SignedJWT getSignedJWT(String tokenIdentifier) throws ParseException {
+        return SignedJWT.parse(tokenIdentifier);
     }
 }

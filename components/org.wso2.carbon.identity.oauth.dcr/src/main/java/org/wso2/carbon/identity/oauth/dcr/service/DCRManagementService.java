@@ -31,6 +31,8 @@ import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.base.IdentityValidationException;
+import org.wso2.carbon.identity.base.IdentityValidationUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthAdminService;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
@@ -39,8 +41,8 @@ import org.wso2.carbon.identity.oauth.dcr.internal.DCRDataHolder;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponseProfile;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
+import org.wso2.carbon.identity.oauth.dcr.util.DCRMUtils;
 import org.wso2.carbon.identity.oauth.dcr.util.ErrorCodes;
-import org.wso2.carbon.identity.oauth.dcr.util.DCRUtils;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
@@ -49,6 +51,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * OAuth DCR Management class used to manage OAuth application registration.
+ */
 public class DCRManagementService {
 
     private static final Log log = LogFactory.getLog(DCRManagementService.class);
@@ -57,14 +62,16 @@ public class DCRManagementService {
     private static final String OAUTH_CONSUMER_SECRET = "oauthConsumerSecret";
     private static final String OAUTH_VERSION = "OAuth-2.0";
     // If client secret doesn't expire it should be 0
-    private static final String DEFAULT_CLIENT_SECRET_EXPIREY_TIME = "0";
+    private static final String DEFAULT_CLIENT_SECRET_EXPIRY_TIME = "0";
 
     private static DCRManagementService dcrManagementService = new DCRManagementService();
 
     private DCRManagementService() {
+
     }
 
     public static DCRManagementService getInstance() {
+
         return DCRManagementService.dcrManagementService;
     }
 
@@ -79,25 +86,20 @@ public class DCRManagementService {
     public RegistrationResponseProfile registerOAuthApplication(RegistrationRequestProfile profile)
             throws DCRException {
 
-
         String applicationName = profile.getClientName();
 
         if (log.isDebugEnabled()) {
             log.debug("Trying to register OAuth application: '" + applicationName + "'");
         }
+        // Regex validation of the application name.
+        if (!DCRMUtils.isRegexValidated(applicationName)) {
+            throw new DCRException("The Application name: " + applicationName + " is not valid! It is not adhering to" +
+                    " the regex: " + DCRMUtils.getSPValidatorRegex());
+        }
 
-        RegistrationResponseProfile info;
-        info = this.createOAuthApplication(profile);
+        RegistrationResponseProfile info = this.createOAuthApplication(profile);
 
-        RegistrationResponseProfile registrationResponseProfile = new RegistrationResponseProfile();
-
-        registrationResponseProfile.setClientName(info.getClientName());
-        registrationResponseProfile.setClientId(info.getClientId());
-        registrationResponseProfile.getRedirectUrls().add(info.getRedirectUrls().get(0));
-        registrationResponseProfile.setClientSecret(info.getClientSecret());
-        registrationResponseProfile.setClientSecretExpiresAt(DEFAULT_CLIENT_SECRET_EXPIREY_TIME);
-        registrationResponseProfile.setGrantTypes(info.getGrantTypes());
-        return registrationResponseProfile;
+        return info;
     }
 
     /**
@@ -111,8 +113,16 @@ public class DCRManagementService {
 
         //Subscriber's name should be passed as a parameter, since it's under the subscriber
         //the OAuth App is created.
+        String owner = profile.getOwner();
+        // Replace all unsupported characters
+        String ownerName = owner.replaceAll(String.valueOf(DCRConstants.UNSUPPORTED_CHARACTERS_IN_REGISTRY), "_");
+        String applicationName = ownerName + "_" + profile.getClientName();
+        // Regex validation of the application name.
+        if (!DCRMUtils.isRegexValidated(applicationName)) {
+            throw new DCRException("The Application name: " + applicationName + " is not valid! It is not adhering to" +
+                    " the regex: " + DCRMUtils.getSPValidatorRegex());
+        }
 
-        String applicationName = profile.getOwner() + "_" + profile.getClientName();
         String grantType = StringUtils.join(profile.getGrantTypes(), " ");
         String baseUser = CarbonContext.getThreadLocalCarbonContext().getUsername();
         String userName = MultitenantUtils.getTenantAwareUsername(profile.getOwner());
@@ -136,9 +146,6 @@ public class DCRManagementService {
 
             ApplicationManagementService appMgtService = DCRDataHolder.getInstance().
                     getApplicationManagementService();
-            if (appMgtService == null) {
-                throw new IllegalStateException("Error occurred while retrieving Application Management Service");
-            }
 
             ServiceProvider existingServiceProvider = null;
             ServiceProvider createdServiceProvider = null;
@@ -148,12 +155,12 @@ public class DCRManagementService {
                 if (existingServiceProvider == null) {
                     appMgtService.createApplication(serviceProvider, profile.getTenantDomain(), userName);
                     createdServiceProvider = appMgtService.getServiceProvider(applicationName,
-                                                                              profile.getTenantDomain());
+                            profile.getTenantDomain());
                 } else {
                     String errorMessage = "Service Provider with name: " + applicationName +
-                        " already registered";
+                            " already registered";
                     throw IdentityException.error(DCRException.class,
-                        ErrorCodes.META_DATA_VALIDATION_FAILED.toString(), errorMessage);
+                            ErrorCodes.META_DATA_VALIDATION_FAILED.toString(), errorMessage);
                 }
 
             } catch (IdentityApplicationManagementException e) {
@@ -183,11 +190,15 @@ public class DCRManagementService {
                         errorMessage);
             } else if (profile.getRedirectUris().size() == 1) {
                 String redirectUri = profile.getRedirectUris().get(0);
-                if (DCRUtils.isRedirectionUriValid(redirectUri)) {
+                try {
+                    //validate the redirect uri
+                    IdentityValidationUtil.getValidInputOverWhiteListPatterns(redirectUri,
+                            new String[]{IdentityValidationUtil.ValidatorPattern.URL_WITHOUT_FRAGMENT.name()});
                     oAuthConsumerApp.setCallbackUrl(redirectUri);
-                } else {
+                } catch (IdentityValidationException e) {
                     //TODO: need to add error code
-                    throw IdentityException.error(DCRException.class, "Redirect URI: " + redirectUri + ", is invalid");
+                    throw IdentityException.error(DCRException.class,
+                            "Redirect URI: " + redirectUri + ", is invalid", e);
                 }
 
             } else if (profile.getRedirectUris().size() > 1) {
@@ -200,29 +211,19 @@ public class DCRManagementService {
                 log.debug("Creating OAuth App " + applicationName);
             }
 
+            OAuthConsumerAppDTO createdApp;
             try {
-                oAuthAdminService.registerOAuthApplicationData(oAuthConsumerApp);
+                createdApp = oAuthAdminService.registerAndRetrieveOAuthApplicationData(oAuthConsumerApp);
             } catch (IdentityOAuthAdminException e) {
-                throw IdentityException.error(DCRException.class, ErrorCodes.META_DATA_VALIDATION_FAILED.toString(), e.getMessage());
+                throw IdentityException.error(DCRException.class,
+                        ErrorCodes.META_DATA_VALIDATION_FAILED.toString(), e.getMessage());
             }
 
             if (log.isDebugEnabled()) {
                 log.debug("Created OAuth App " + applicationName);
-            }
-
-            OAuthConsumerAppDTO createdApp = null;
-
-            try {
-                createdApp = oAuthAdminService
-                        .getOAuthApplicationDataByAppName(oAuthConsumerApp.getApplicationName());
-            } catch (IdentityOAuthAdminException e) {
-                throw IdentityException.error(DCRException.class, ErrorCodes.BAD_REQUEST.toString(), e.getMessage());
-
-            }
-
-            if (log.isDebugEnabled()) {
                 log.debug("Retrieved Details for OAuth App " + createdApp.getApplicationName());
             }
+
             // Set the OAuthApp in InboundAuthenticationConfig
             InboundAuthenticationConfig inboundAuthenticationConfig = new InboundAuthenticationConfig();
             List<InboundAuthenticationRequestConfig> inboundAuthenticationRequestConfigs = new ArrayList<>();
@@ -241,8 +242,8 @@ public class DCRManagementService {
             }
             inboundAuthenticationRequestConfigs.add(inboundAuthenticationRequestConfig);
             inboundAuthenticationConfig.setInboundAuthenticationRequestConfigs(inboundAuthenticationRequestConfigs
-                                                                                       .toArray(new InboundAuthenticationRequestConfig[inboundAuthenticationRequestConfigs
-                                                                                               .size()]));
+                    .toArray(new InboundAuthenticationRequestConfig[inboundAuthenticationRequestConfigs
+                            .size()]));
             createdServiceProvider.setInboundAuthenticationConfig(inboundAuthenticationConfig);
 
             // Update the Service Provider app to add OAuthApp as an Inbound Authentication Config
@@ -257,6 +258,7 @@ public class DCRManagementService {
             registrationResponseProfile.getRedirectUrls().add(createdApp.getCallbackUrl());
             registrationResponseProfile.setClientSecret(oauthConsumerSecret);
             registrationResponseProfile.setClientName(createdApp.getApplicationName());
+            registrationResponseProfile.setClientSecretExpiresAt(DEFAULT_CLIENT_SECRET_EXPIRY_TIME);
             if (StringUtils.isNotBlank(createdApp.getGrantTypes())) {
                 String[] split = createdApp.getGrantTypes().split(" ");
                 registrationResponseProfile.setGrantTypes(Arrays.asList(split));
@@ -275,7 +277,6 @@ public class DCRManagementService {
      * @param userId          - UserId of the owner
      * @param applicationName - OAuth application name
      * @param consumerKey     - ConsumerKey of the OAuth application
-     * @return The status of the operation
      * @throws DCRException
      */
     public void unregisterOAuthApplication(String userId, String applicationName, String consumerKey)
@@ -300,7 +301,7 @@ public class DCRManagementService {
         } catch (Exception e) {
             //We had to catch Exception here because getOAuthApplicationData can throw exceptions of java.lang.Exception
             // class.
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Error occurred while oauth application data by consumer id.", e);
             }
         }
@@ -327,7 +328,7 @@ public class DCRManagementService {
                         "Error occurred while removing ServiceProvider for application '" + applicationName + "'", e);
             } catch (IdentityOAuthAdminException e) {
                 throw new DCRException("Error occurred while removing application '" +
-                                       applicationName + "'", e);
+                        applicationName + "'", e);
             } finally {
                 PrivilegedCarbonContext.endTenantFlow();
             }
@@ -342,6 +343,7 @@ public class DCRManagementService {
      * @throws DCRException
      */
     public boolean isOAuthApplicationAvailable(String applicationName) throws DCRException {
+
         ApplicationManagementService appMgtService = DCRDataHolder.getInstance().
                 getApplicationManagementService();
         if (appMgtService == null) {
@@ -349,31 +351,31 @@ public class DCRManagementService {
         }
         try {
             return appMgtService
-                           .getServiceProvider(applicationName, CarbonContext.getThreadLocalCarbonContext()
-                                   .getTenantDomain())
-                   != null;
+                    .getServiceProvider(applicationName, CarbonContext.getThreadLocalCarbonContext()
+                            .getTenantDomain())
+                    != null;
         } catch (IdentityApplicationManagementException e) {
             throw new DCRException(
                     "Error occurred while retrieving information of OAuthApp " + applicationName, e);
         }
     }
 
-    private String replaceInvalidChars(String username) {
-        return username.replaceAll("@", "_AT_");
-    }
-
     private String createRegexPattern(List<String> redirectURIs) throws DCRException {
+
         StringBuilder regexPattern = new StringBuilder();
         for (String redirectURI : redirectURIs) {
-            if (DCRUtils.isRedirectionUriValid(redirectURI)) {
+            try {
+                //validate the redirect uri
+                IdentityValidationUtil.getValidInputOverWhiteListPatterns(redirectURI,
+                        new String[]{IdentityValidationUtil.ValidatorPattern.URL_WITHOUT_FRAGMENT.name()});
                 if (regexPattern.length() > 0) {
                     regexPattern.append("|").append(redirectURI);
                 } else {
                     regexPattern.append("(").append(redirectURI);
                 }
-            } else {
+            } catch (IdentityValidationException e) {
                 //TODO: need to add error code
-                throw IdentityException.error(DCRException.class, "Redirect URI: " + redirectURI + ", is invalid");
+                throw IdentityException.error(DCRException.class, "Redirect URI: " + redirectURI + ", is invalid", e);
             }
         }
         if (regexPattern.length() > 0) {
@@ -383,9 +385,9 @@ public class DCRManagementService {
     }
 
     protected Registry getConfigSystemRegistry() {
+
         return (Registry) PrivilegedCarbonContext.getThreadLocalCarbonContext().getRegistry(
                 RegistryType.SYSTEM_CONFIGURATION);
     }
-
 
 }

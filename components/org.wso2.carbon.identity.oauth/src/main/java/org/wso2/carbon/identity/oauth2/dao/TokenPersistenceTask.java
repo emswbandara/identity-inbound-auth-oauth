@@ -24,11 +24,11 @@ import org.wso2.carbon.identity.base.IdentityException;
 import java.util.concurrent.BlockingDeque;
 
 /**
- *
+ * OAuth token persistence task.
  */
 public class TokenPersistenceTask implements Runnable {
 
-    private static Log log = LogFactory.getLog(TokenPersistenceTask.class);
+    private static final Log log = LogFactory.getLog(TokenPersistenceTask.class);
     private BlockingDeque<AccessContextTokenDO> accessContextTokenQueue;
 
     public TokenPersistenceTask(BlockingDeque<AccessContextTokenDO> accessContextTokenQueue) {
@@ -48,15 +48,15 @@ public class TokenPersistenceTask implements Runnable {
                 if (accessContextTokenDO != null) {
                     accessToken = accessContextTokenDO.getAccessToken();
                     log.debug("Access Token Data persisting Task is started to run");
-                    TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-                    tokenMgtDAO.persistAccessToken(accessToken, accessContextTokenDO.getConsumerKey(),
-                                                   accessContextTokenDO.getNewAccessTokenDO(),
-                                                   accessContextTokenDO.getExistingAccessTokenDO(),
-                                                   accessContextTokenDO.getUserStoreDomain());
+                    OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                            .insertAccessToken(accessToken, accessContextTokenDO.getConsumerKey(),
+                                    accessContextTokenDO.getNewAccessTokenDO(),
+                                    accessContextTokenDO.getExistingAccessTokenDO(),
+                                    accessContextTokenDO.getUserStoreDomain());
                 }
             } catch (InterruptedException e) {
-                log.error("Error occurred while getting AccessContextTokenDO instance from accessContextTokenQueue" , e);
-            }catch (IdentityException e){
+                log.error("Error occurred while getting AccessContextTokenDO instance from accessContextTokenQueue", e);
+            } catch (IdentityException e) {
                 log.error("Error occurred while persisting access token :" + accessToken, e);
             }
         }
