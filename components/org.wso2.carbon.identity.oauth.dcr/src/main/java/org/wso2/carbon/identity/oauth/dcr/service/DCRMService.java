@@ -82,11 +82,11 @@ public class DCRMService {
             String tenantDomainOfApp = OAuth2Util.getTenantDomainOfOauthApp(clientId);
             OAuth2Util.validateRequestTenantDomain(tenantDomainOfApp);
         } catch (InvalidOAuthClientException e) {
-            throw new DCRMClientException("NOT_FOUND_60001", "Tenant domain in request does not match with the " +
-                    "application tenant domain for consumer key: " + clientId);
+            throw new DCRMClientException(DCRMConstants.ErrorMessages.TENANT_DOMAIN_MISMATCH.getErrorCode(),
+                    String.format(DCRMConstants.ErrorMessages.TENANT_DOMAIN_MISMATCH.getMessage(), clientId));
         } catch (IdentityOAuth2Exception e) {
-            throw new DCRMServerException("Error occurred during validating tenant domain for consumer key: " +
-                    clientId);
+            throw new DCRMServerException(String.format(DCRMConstants.ErrorMessages.FAILED_TO_VALIDATE_TENANT_DOMAIN
+                    .getMessage(), clientId));
         }
         boolean isApplicationRolePermissionRequired = DCRMUtils.isApplicationRolePermissionRequired();
         return buildResponse(getApplicationById(clientId, isApplicationRolePermissionRequired));
@@ -151,11 +151,11 @@ public class DCRMService {
             String tenantDomainOfApp = OAuth2Util.getTenantDomainOfOauthApp(clientId);
             OAuth2Util.validateRequestTenantDomain(tenantDomainOfApp);
         } catch (InvalidOAuthClientException e) {
-            throw new DCRMClientException("NOT_FOUND_60001", "Tenant domain in request does not match with the " +
-                    "application tenant domain for consumer key: " + clientId);
+            throw new DCRMClientException(DCRMConstants.ErrorMessages.TENANT_DOMAIN_MISMATCH.getErrorCode(),
+                    String.format(DCRMConstants.ErrorMessages.TENANT_DOMAIN_MISMATCH.getMessage(), clientId));
         } catch (IdentityOAuth2Exception e) {
-            throw new DCRMServerException("Error occurred during validating tenant domain for consumer key: " +
-                    clientId);
+            throw new DCRMServerException(String.format(DCRMConstants.ErrorMessages.FAILED_TO_VALIDATE_TENANT_DOMAIN
+                    .getMessage(), clientId));
         }
 
         OAuthConsumerAppDTO appDTO = getApplicationById(clientId);
@@ -199,11 +199,11 @@ public class DCRMService {
             String tenantDomainOfApp = OAuth2Util.getTenantDomainOfOauthApp(clientId);
             OAuth2Util.validateRequestTenantDomain(tenantDomainOfApp);
         } catch (InvalidOAuthClientException e) {
-            throw new DCRMClientException("NOT_FOUND_60001", "Tenant domain in request does not match with the " +
-                    "application tenant domain for consumer key: " + clientId);
+            throw new DCRMClientException(DCRMConstants.ErrorMessages.TENANT_DOMAIN_MISMATCH.getErrorCode(),
+                    String.format(DCRMConstants.ErrorMessages.TENANT_DOMAIN_MISMATCH.getMessage(), clientId));
         } catch (IdentityOAuth2Exception e) {
-            throw new DCRMServerException("Error occurred during validating tenant domain for consumer key: " +
-                    clientId);
+            throw new DCRMServerException(String.format(DCRMConstants.ErrorMessages.FAILED_TO_VALIDATE_TENANT_DOMAIN
+                    .getMessage(), clientId));
         }
 
         OAuthConsumerAppDTO appDTO = getApplicationById(clientId);
