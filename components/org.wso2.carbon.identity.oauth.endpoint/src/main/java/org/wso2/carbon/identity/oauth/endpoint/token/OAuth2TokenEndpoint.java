@@ -277,6 +277,7 @@ public class OAuth2TokenEndpoint {
         tokenReqDTO.setClientSecret(oauthRequest.getClientSecret());
         tokenReqDTO.setCallbackURI(oauthRequest.getRedirectURI());
         tokenReqDTO.setScope(oauthRequest.getScopes().toArray(new String[0]));
+        //
         tokenReqDTO.setTenantDomain(oauthRequest.getTenantDomain());
         tokenReqDTO.setPkceCodeVerifier(oauthRequest.getPkceCodeVerifier());
         // Set all request parameters to the OAuth2AccessTokenReqDTO

@@ -61,6 +61,7 @@ import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataExcept
 import org.wso2.carbon.identity.claim.metadata.mgt.model.ExternalClaim;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
@@ -1544,7 +1545,11 @@ public class OAuth2AuthzEndpoint {
         params.setLoginHint(oauthRequest.getParam(OAuthConstants.OAuth20Params.LOGIN_HINT));
 
         // Set the service provider tenant domain.
-        params.setTenantDomain(getSpTenantDomain(clientId));
+        if (IdentityTenantUtil.isTenantQualifiedUrlsEnabled()) {
+            params.setTenantDomain(IdentityTenantUtil.getTenantDomainFromContext());
+        } else {
+            params.setTenantDomain(getSpTenantDomain(clientId));
+        }
 
         if (StringUtils.isNotBlank(oauthRequest.getParam(ACR_VALUES)) && !"null".equals(oauthRequest.getParam
                 (ACR_VALUES))) {
@@ -2859,7 +2864,9 @@ public class OAuth2AuthzEndpoint {
     private void setSPAttributeToRequest(HttpServletRequest req, String spName, String tenantDomain) {
 
         req.setAttribute(REQUEST_PARAM_SP, spName);
-        req.setAttribute(TENANT_DOMAIN, tenantDomain);
+        if (!IdentityTenantUtil.isTenantQualifiedUrlsEnabled()) {
+            req.setAttribute(TENANT_DOMAIN, tenantDomain);
+        }
     }
 
     /**
